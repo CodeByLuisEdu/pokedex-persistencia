@@ -1,0 +1,15 @@
+# dados gerados em runtime (cache em disco)
+dados/*
+!dados/.gitkeep
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# editores
+.vscode/
+.idea/
+.DS_Store
