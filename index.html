@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pokédex · Persistência de Dados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#D7282F; --red-lo:#9E1B22; --red-hi:#E8474D; --red-edge:#7A1318;
+    --screen:#0E2E22; --screen-lo:#0A2018; --lcd:#7CFCB0; --lcd-dim:#3f7a5c;
+    --tile:#F4F6F4; --tile-line:#cfd6cf; --ink:#15201A; --muted:#5d6b63;
+    --blue:#39B3F2; --blue-lo:#0A6FB0; --amber:#F4C13B; --green:#46d17a;
+    --term-bg:#0c1410; --hex:#7CFCB0; --txt:#d9e6dd; --ascii:#F4C13B;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; color:var(--ink); font-family:"Inter",system-ui,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255,255,255,.5), transparent 40%),
+      repeating-linear-gradient(0deg,#e2e5e8 0 1px,transparent 1px 22px),
+      repeating-linear-gradient(90deg,#e2e5e8 0 1px,transparent 1px 22px),
+      #eceef1;
+  }
+  .stage{max-width:1180px; margin:0 auto; padding:22px 16px 60px}
+
+  /* ============ Corpo do dispositivo Pokédex ============ */
+  .pokedex{
+    background:linear-gradient(168deg,var(--red-hi) 0%,var(--red) 38%,var(--red-lo) 100%);
+    border-radius:24px; padding:0 0 18px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.35) inset,
+      0 -6px 0 var(--red-edge) inset,
+      0 26px 50px -26px rgba(120,10,15,.7);
+    border:1px solid var(--red-edge); overflow:hidden;
+  }
+  /* Tampa superior com lente e luzes */
+  .lid{
+    display:flex; align-items:center; gap:16px; padding:18px 22px 16px;
+    border-bottom:5px solid var(--red-edge);
+    background:linear-gradient(180deg,rgba(255,255,255,.12),transparent);
+    position:relative;
+  }
+  .lid::after{ /* parafusos da dobradiça */
+    content:""; position:absolute; right:18px; bottom:-5px; height:5px; width:130px;
+    background:repeating-linear-gradient(90deg,var(--red-edge) 0 10px,transparent 10px 20px);
+  }
+  .lens{
+    width:60px; height:60px; border-radius:50%; flex:none; position:relative;
+    background:radial-gradient(circle at 34% 30%, #d8f4ff 0 6%, var(--blue) 36%, var(--blue-lo) 80%);
+    box-shadow:0 0 0 5px #fff, 0 0 0 9px var(--red-edge), 0 0 22px 3px rgba(70,180,255,.55);
+  }
+  .lens::before{ content:""; position:absolute; top:10px; left:14px; width:16px; height:11px;
+    background:rgba(255,255,255,.85); border-radius:50%; transform:rotate(-25deg); filter:blur(.5px);}
+  .lamps{display:flex; gap:9px; margin-left:2px}
+  .lamps i{width:14px;height:14px;border-radius:50%;display:block;box-shadow:0 0 0 2px rgba(0,0,0,.15) inset, 0 1px 2px rgba(0,0,0,.3)}
+  .lamps i.r{background:radial-gradient(circle at 35% 30%,#ff9a9d,#e23b3b)}
+  .lamps i.y{background:radial-gradient(circle at 35% 30%,#ffe79a,#f0c333)}
+  .lamps i.g{background:radial-gradient(circle at 35% 30%,#a5f7c0,#35c46d)}
+  .brand{margin-left:auto; text-align:right; color:#fff}
+  .brand h1{font-family:"Space Grotesk",sans-serif;font-weight:700;margin:0;
+    font-size:clamp(19px,3vw,27px);letter-spacing:-.02em;text-shadow:0 2px 0 var(--red-edge)}
+  .brand p{margin:1px 0 0;font-size:12px;opacity:.92}
+
+  /* Painel de controle (sobre o corpo vermelho) */
+  .deck{padding:16px 22px 4px; display:flex; flex-direction:column; gap:11px}
+  .row{display:flex; gap:9px; flex-wrap:wrap; align-items:center}
+  .row .grow{flex:1 1 240px}
+  label.tiny{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#ffd9da;font-weight:700}
+
+  button,select,input{font-family:inherit;font-size:14px}
+  button{
+    border:1px solid rgba(0,0,0,.18); background:#fff; color:var(--ink);
+    padding:10px 14px; border-radius:11px; cursor:pointer; font-weight:600;
+    box-shadow:0 2px 0 rgba(0,0,0,.18); transition:transform .05s, box-shadow .05s, background .15s;
+  }
+  button:hover{background:#f4f4f4}
+  button:active{transform:translateY(2px);box-shadow:0 0 0 rgba(0,0,0,.18)}
+  button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  button.primary{background:#fff;color:var(--red-lo)}
+  button.dark{background:#241016;color:#fff;border-color:#000}
+  select,input[type=search]{
+    border:1px solid rgba(0,0,0,.2); background:#fff; padding:9px 11px; border-radius:11px; color:var(--ink);
+    box-shadow:0 2px 0 rgba(0,0,0,.12);
+  }
+  input[type=search]{min-width:180px}
+  :focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  .ctl{display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.13);padding:6px 9px;border-radius:12px}
+
+  /* ============ Tela embutida (LCD) ============ */
+  .screen-frame{
+    margin:12px 18px 0; border-radius:16px; padding:10px;
+    background:linear-gradient(180deg,#7c1418,#5e0f13);
+    box-shadow:0 3px 0 rgba(255,255,255,.12) inset, 0 -3px 8px rgba(0,0,0,.3) inset;
+  }
+  .screen{
+    background:linear-gradient(180deg,var(--screen) 0%,var(--screen-lo) 100%);
+    border-radius:11px; padding:12px; border:1px solid #062018;
+    box-shadow:0 0 0 2px #0c3a2b inset, 0 10px 24px -12px rgba(0,0,0,.7) inset;
+  }
+  .statusbar{
+    display:flex; align-items:center; gap:9px; font-family:"JetBrains Mono",monospace;
+    font-size:12.5px; color:var(--lcd); margin-bottom:10px;
+    text-shadow:0 0 6px rgba(124,252,176,.4);
+  }
+  .dot{width:9px;height:9px;border-radius:50%;background:#2c5a47;flex:none;box-shadow:0 0 6px currentColor}
+  .dot.api{background:var(--blue);color:var(--blue)} .dot.file{background:var(--green);color:var(--green)} .dot.err{background:#ff6b6b;color:#ff6b6b}
+  .pill{background:rgba(124,252,176,.12);border:1px solid var(--lcd-dim);padding:1px 7px;border-radius:6px}
+  .count{margin-left:auto;color:var(--lcd-dim)}
+
+  .pokegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:9px}
+  .mon{
+    border-radius:12px;padding:10px;background:linear-gradient(180deg,var(--tile),#e8ece8);
+    border:1px solid var(--tile-line); display:flex;flex-direction:column;gap:5px;
+    box-shadow:0 1px 0 #fff inset; position:relative;
+  }
+  .mon .num{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted)}
+  .mon .sprite{width:74px;height:74px;align-self:center;image-rendering:pixelated;
+    background:radial-gradient(circle at 50% 45%,#fff,#dfe6df);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);
+    box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .mon .name{font-weight:700;text-transform:capitalize;font-size:15px;letter-spacing:-.01em}
+  .mon .stats{display:flex;flex-wrap:wrap;gap:4px;margin-top:1px}
+  .mon .stats span{font-size:10.5px;border-radius:6px;padding:2px 6px;font-weight:600;color:#fff}
+  .s-hp{background:#e0534f} .s-atq{background:#e8923a} .s-def{background:#d8b13a}
+  .s-vel{background:#4aa3e0} .s-w{background:#7a8a80} .s-h{background:#6b7d92}
+
+  .empty{text-align:center;color:var(--lcd-dim);padding:34px 12px;font-size:13.5px;
+    font-family:"JetBrains Mono",monospace;line-height:1.7}
+  .empty b{color:var(--lcd)}
+
+  /* ============ Painéis laterais ============ */
+  .grid-2{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;margin:14px 18px 0}
+  @media(max-width:880px){.grid-2{grid-template-columns:1fr}}
+  .panel{background:#fbf4f0;border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:14px;
+    box-shadow:0 1px 0 #fff inset, 0 8px 20px -16px rgba(0,0,0,.5)}
+  .panel > h2{font-family:"Space Grotesk",sans-serif;font-size:13.5px;margin:0 0 10px;
+    display:flex;align-items:center;gap:8px}
+  .ball{width:16px;height:16px;border-radius:50%;flex:none;
+    background:linear-gradient(180deg,var(--red) 0 50%,#fff 50% 100%);
+    border:1.5px solid #20100f;position:relative}
+  .ball::after{content:"";position:absolute;inset:0;margin:auto;width:5px;height:5px;border-radius:50%;
+    background:#fff;border:1.5px solid #20100f}
+  .eyebrow{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--red-lo);
+    border:1px solid var(--red);border-radius:5px;padding:1px 6px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 7px;border-bottom:1px solid rgba(0,0,0,.1)}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  td.num,th.num{text-align:right;font-family:"JetBrains Mono",monospace}
+  .bar{height:6px;border-radius:4px;background:var(--red);display:block}
+  .legend{font-size:11px;color:var(--muted);margin-top:8px}
+  .winner{color:#138a4e;font-weight:800}
+
+  /* Inspetor: leitura LCD texto vs hexdump (assinatura) */
+  .insp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .insp-tabs button{padding:6px 11px;font-size:12px;border-radius:9px;box-shadow:0 1px 0 rgba(0,0,0,.15)}
+  .insp-tabs button.active{background:#241016;color:#fff;border-color:#000}
+  .readout{
+    background:var(--term-bg);border-radius:11px;padding:12px;overflow:auto;max-height:330px;
+    font-family:"JetBrains Mono",monospace;font-size:12px;line-height:1.55;
+    white-space:pre;border:1px solid #000;
+    box-shadow:0 0 0 2px #123 inset;
+  }
+  .readout.text{color:var(--txt)}
+  .readout.hex{color:var(--hex);text-shadow:0 0 5px rgba(124,252,176,.35)}
+  .readout .ascii{color:var(--ascii)}
+  .insp-meta{font-size:11.5px;color:var(--muted);margin-top:8px;font-family:"JetBrains Mono",monospace}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);
+    background:#241016;color:#fff;padding:11px 16px;border-radius:11px;font-size:13px;
+    opacity:0;pointer-events:none;transition:all .25s;z-index:50;max-width:90vw;
+    box-shadow:0 10px 30px -10px rgba(0,0,0,.6)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#8b1418}
+  .pokespin{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;
+    background:linear-gradient(180deg,#fff 0 50%,#bbb 50% 100%);
+    border:2px solid currentColor;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="pokedex">
+
+    <!-- Tampa: lente + luzes + marca -->
+    <div class="lid">
+      <span class="lens" aria-hidden="true"></span>
+      <span class="lamps" aria-hidden="true"><i class="r"></i><i class="y"></i><i class="g"></i></span>
+      <div class="brand">
+        <h1>Pokédex · Persistência</h1>
+        <p>Texto vs binário — JSON · CSV · pickle · struct</p>
+      </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="deck">
+      <div class="row">
+        <button id="btnApi" class="primary">⬇️ Carregar da API</button>
+        <button id="btnSalvar" disabled>💾 Salvar em disco</button>
+        <span class="ctl">
+          <label class="tiny" for="selOffline">Offline</label>
+          <select id="selOffline">
+            <option value="json">JSON</option>
+            <option value="csv">CSV</option>
+            <option value="pickle">pickle</option>
+            <option value="struct">struct</option>
+          </select>
+          <button id="btnOffline" class="dark">📂 Carregar do arquivo</button>
+        </span>
+      </div>
+      <div class="row">
+        <input id="busca" type="search" placeholder="🔎 Buscar por nome ou nº…" class="grow" />
+        <span class="ctl">
+          <label class="tiny" for="selOrd">Ordenar</label>
+          <select id="selOrd">
+            <option value="id">Número</option>
+            <option value="name">Nome (A–Z)</option>
+            <option value="weight">Peso</option>
+            <option value="height">Altura</option>
+            <option value="base_experience">Experiência</option>
+            <option value="total">Atributos</option>
+          </select>
+          <select id="selDir">
+            <option value="asc">▲</option>
+            <option value="desc">▼</option>
+          </select>
+        </span>
+      </div>
+    </div>
+
+    <!-- Tela LCD com a grade -->
+    <div class="screen-frame">
+      <div class="screen">
+        <div class="statusbar">
+          <span id="srcDot" class="dot"></span>
+          <span id="srcText">Aguardando dados… carregue da API para começar.</span>
+          <span class="count" id="count"></span>
+        </div>
+        <div id="pokegrid" class="pokegrid"></div>
+        <div id="vazio" class="empty">
+          ► <b>Carregar da API</b> para baixar os 151 Pokémon<br>
+          ► <b>Salvar em disco</b> grava nos 4 formatos<br>
+          ► desligue a internet e use <b>Carregar do arquivo</b>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painéis: comparação + inspeção -->
+    <div class="grid-2">
+      <div class="panel">
+        <h2><span class="ball"></span> Comparação de formatos <span class="eyebrow">BENCH</span></h2>
+        <div id="comparaBox">
+          <div class="empty" style="color:var(--muted);padding:18px 6px">Salve em disco para ver tamanho e tempo de cada formato.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="ball"></span> Inspeção: texto vs binário <span class="eyebrow">RAW</span></h2>
+        <div class="insp-tabs" id="inspTabs">
+          <button data-f="json" class="active">JSON</button>
+          <button data-f="csv">CSV</button>
+          <button data-f="pickle">pickle</button>
+          <button data-f="struct">struct</button>
+        </div>
+        <div id="readout" class="readout text">Salve em disco e selecione um formato para inspecionar o arquivo.</div>
+        <div id="inspMeta" class="insp-meta"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = "";
+let dataset = [];
+let origem = null;
+const $ = (id) => document.getElementById(id);
+
+// escapa caracteres HTML — corrige o erro de inspeção do binário (ex.: '<' no hexdump)
+const esc = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+const toastEl = $("toast");
+function toast(msg, erro=false){
+  toastEl.textContent = msg;
+  toastEl.className = "toast show" + (erro ? " err" : "");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>toastEl.className="toast", 3200);
+}
+function busy(btn, on, label){
+  if(on){ btn.dataset.txt = btn.innerHTML; btn.innerHTML = '<span class="pokespin"></span> '+(label||"…"); btn.disabled = true; }
+  else { btn.innerHTML = btn.dataset.txt; btn.disabled = false; }
+}
+const spriteUrl = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+
+function statTotal(p){return p.hp+p.attack+p.defense+p.special_attack+p.special_defense+p.speed;}
+function aplicarFiltros(){
+  const termo = $("busca").value.trim().toLowerCase();
+  const chave = $("selOrd").value, dir = $("selDir").value==="asc"?1:-1;
+  let lista = dataset.filter(p => !termo || p.name.toLowerCase().includes(termo) || String(p.id)===termo);
+  lista.sort((a,b)=>{
+    let va = chave==="total"?statTotal(a):a[chave], vb = chave==="total"?statTotal(b):b[chave];
+    if(typeof va==="string") return va.localeCompare(vb)*dir;
+    return (va-vb)*dir;
+  });
+  render(lista);
+}
+function render(lista){
+  const grid=$("pokegrid"), vazio=$("vazio");
+  $("count").textContent = dataset.length ? `${lista.length}/${dataset.length}` : "";
+  if(!lista.length){
+    grid.innerHTML=""; vazio.style.display="block";
+    if(dataset.length) vazio.innerHTML="Nenhum Pokémon corresponde à busca.";
+    return;
+  }
+  vazio.style.display="none";
+  grid.innerHTML = lista.map(p=>`
+    <div class="mon">
+      <span class="num">#${String(p.id).padStart(3,"0")}</span>
+      <img class="sprite" alt="" src="${spriteUrl(p.id)}"
+           onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'sprite',textContent:'#'+${p.id}}))">
+      <span class="name">${esc(p.name)}</span>
+      <div class="stats">
+        <span class="s-hp">HP ${p.hp}</span><span class="s-atq">ATQ ${p.attack}</span>
+        <span class="s-def">DEF ${p.defense}</span><span class="s-vel">VEL ${p.speed}</span>
+        <span class="s-w">⚖ ${(p.weight/10).toFixed(1)}kg</span><span class="s-h">↕ ${(p.height/10).toFixed(1)}m</span>
+      </div>
+    </div>`).join("");
+}
+function setOrigem(tipo, texto){
+  const dot=$("srcDot");
+  dot.className = "dot " + (tipo==="api"?"api":tipo==="erro"?"err":"file");
+  $("srcText").innerHTML = texto;
+}
+
+async function carregarDaApi(){
+  const btn=$("btnApi"); busy(btn,true,"Baixando…");
+  try{
+    const r = await fetch(`${API}/api/carregar?limite=151`); const j = await r.json();
+    if(!j.ok) throw new Error(j.erro||"Falha ao carregar.");
+    dataset = j.dados;
+    setOrigem("api", `<span class="pill">PokéAPI</span> online · ${j.total} Pokémon`);
+    aplicarFiltros(); $("btnSalvar").disabled=false;
+    toast(`✅ ${j.total} Pokémon baixados`);
+  }catch(e){ setOrigem("erro","Erro ao acessar a PokéAPI. Você está online?"); toast(e.message,true); }
+  finally{ busy(btn,false); }
+}
+async function salvarEmDisco(){
+  if(!dataset.length){ toast("Carregue os dados primeiro.",true); return; }
+  const btn=$("btnSalvar"); busy(btn,true,"Gravando…");
+  try{
+    const r = await fetch(`${API}/api/salvar`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({dados:dataset})});
+    const j = await r.json(); if(!j.ok) throw new Error(j.erro||"Falha ao salvar.");
+    renderComparacao(j.formatos); inspecionar(inspAtual);
+    toast("💾 Salvo nos 4 formatos");
+  }catch(e){ toast(e.message,true); } finally{ busy(btn,false); }
+}
+async function carregarOffline(){
+  const fmt=$("selOffline").value, btn=$("btnOffline"); busy(btn,true,"Lendo…");
+  try{
+    const r = await fetch(`${API}/api/offline?formato=${fmt}`); const j = await r.json();
+    if(!j.ok) throw new Error(j.erro||"Falha ao ler arquivo.");
+    dataset = j.dados;
+    const ext = fmt==="pickle"?"pkl":fmt==="struct"?"bin":fmt;
+    setOrigem(fmt, `<span class="pill">arquivo .${ext}</span> offline · ${j.total} Pokémon`);
+    aplicarFiltros(); $("btnSalvar").disabled=false;
+    toast(`📂 ${j.total} Pokémon lidos de ${fmt} (sem internet)`);
+  }catch(e){ toast(e.message,true); setOrigem("erro", e.message); }
+  finally{ busy(btn,false); }
+}
+async function atualizarComparacao(){
+  try{ const r=await fetch(`${API}/api/comparar`); const j=await r.json(); if(j.ok) renderComparacao(j.formatos);}catch(e){}
+}
+function renderComparacao(fmts){
+  const linhas = Object.entries(fmts).filter(([,v])=>v.existe!==false);
+  if(!linhas.length){ $("comparaBox").innerHTML='<div class="empty" style="color:var(--muted);padding:18px 6px">Nenhum arquivo salvo ainda.</div>'; return; }
+  const maxKb = Math.max(...linhas.map(([,v])=>v.tamanho_kb));
+  const menor = linhas.reduce((a,b)=>b[1].tamanho_kb<a[1].tamanho_kb?b:a);
+  const temSalvar = linhas[0][1].tempo_salvar_ms!==undefined;
+  let html = `<table><thead><tr><th>Formato</th><th class="num">KB</th>${temSalvar?'<th class="num">Salvar</th>':''}<th class="num">Carregar</th></tr></thead><tbody>`;
+  for(const [fmt,v] of linhas){
+    const venceu = fmt===menor[0]; const pct = Math.max(6,(v.tamanho_kb/maxKb)*100);
+    html += `<tr><td>${v.rotulo} ${venceu?'<span class="winner">★</span>':''}<div class="bar" style="width:${pct}%;margin-top:5px;opacity:${venceu?1:.5}"></div></td>
+      <td class="num">${v.tamanho_kb}</td>${temSalvar?`<td class="num">${v.tempo_salvar_ms} ms</td>`:''}<td class="num">${v.tempo_carregar_ms} ms</td></tr>`;
+  }
+  html += `</tbody></table><div class="legend">★ menor arquivo. Tempos em ms (variam por execução).</div>`;
+  $("comparaBox").innerHTML = html;
+}
+let inspAtual = "json";
+async function inspecionar(fmt){
+  inspAtual = fmt;
+  [...$("inspTabs").children].forEach(b=>b.classList.toggle("active", b.dataset.f===fmt));
+  const out=$("readout"), meta=$("inspMeta");
+  try{
+    const r = await fetch(`${API}/api/inspecionar?formato=${fmt}`); const j = await r.json();
+    if(!j.ok){ out.className="readout text"; out.textContent=j.erro||"Arquivo ainda não existe."; meta.textContent=""; return; }
+    if(j.tipo==="texto"){
+      out.className="readout text"; out.textContent=j.conteudo;
+      meta.textContent=`${j.rotulo} · primeiros caracteres legíveis (UTF-8)`;
+    }else{
+      out.className="readout hex";
+      // ESCAPA antes de inserir — senão '<' do hexdump quebra o innerHTML
+      out.innerHTML = j.conteudo.split("\n").map(l=>{
+        const i = l.indexOf("|");
+        if(i<0) return esc(l);
+        return esc(l.slice(0,i)) + '<span class="ascii">' + esc(l.slice(i)) + '</span>';
+      }).join("\n");
+      meta.textContent=`${j.rotulo} · hexdump (ilegível)` + (j.tam_registro?` · registro fixo de ${j.tam_registro} bytes · layout ${j.layout}`:"");
+    }
+  }catch(e){ out.className="readout text"; out.textContent="Erro: "+e.message; }
+}
+
+$("btnApi").onclick=carregarDaApi; $("btnSalvar").onclick=salvarEmDisco;
+$("btnOffline").onclick=carregarOffline;
+$("busca").oninput=aplicarFiltros; $("selOrd").onchange=aplicarFiltros; $("selDir").onchange=aplicarFiltros;
+[...$("inspTabs").children].forEach(b=>b.onclick=()=>inspecionar(b.dataset.f));
+atualizarComparacao(); inspecionar("json");
+</script>
+</body>
+</html>
