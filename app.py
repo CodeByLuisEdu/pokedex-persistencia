@@ -14,6 +14,7 @@ Responsabilidades:
 Rode com:  python app.py    (abre em http://localhost:5000)
 """
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -21,7 +22,10 @@ from flask import Flask, jsonify, request, send_from_directory
 
 import persistencia as pers
 
-app = Flask(__name__, static_folder="static")
+# Pasta onde este arquivo (app.py) está. O index.html fica aqui, ao lado dele.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__)
 
 POKEAPI = "https://pokeapi.co/api/v2"
 
@@ -31,7 +35,7 @@ POKEAPI = "https://pokeapi.co/api/v2"
 # ----------------------------------------------------------------------------
 @app.route("/")
 def index():
-    return send_from_directory("static", "index.html")
+    return send_from_directory(BASE_DIR, "index.html")
 
 
 # ----------------------------------------------------------------------------

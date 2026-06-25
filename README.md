@@ -109,10 +109,9 @@ legibilidade e interoperabilidade. CSV é um bom meio-termo para dados tabulares
 
 ```
 pokedex-persistencia/
-├── app.py             # backend Flask (rotas/API)
+├── app.py             # backend Flask (rotas/API + serve o index.html)
 ├── persistencia.py    # núcleo: salvar/carregar nos 4 formatos + hexdump
-├── static/
-│   └── index.html     # frontend (ordenação, busca, offline, comparação, inspeção)
+├── index.html         # frontend (ordenação, busca, offline, comparação, inspeção)
 ├── dados/             # cache em disco (gerado em runtime; ignorado no git)
 ├── requirements.txt
 └── README.md
