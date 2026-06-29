@@ -38,6 +38,11 @@ def index():
     return send_from_directory(BASE_DIR, "index.html")
 
 
+@app.route("/busca")
+def busca():
+    return send_from_directory(BASE_DIR, "busca.html")
+
+
 # ----------------------------------------------------------------------------
 # GET /api/carregar?limite=151
 # Baixa da PokéAPI e devolve o dataset já simplificado (NÃO salva ainda).

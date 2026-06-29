@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pokédex · Algoritmos de Busca</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#D7282F; --red-lo:#9E1B22; --red-hi:#E8474D; --red-edge:#7A1318;
+    --screen:#0E2E22; --screen-lo:#0A2018; --lcd:#7CFCB0; --lcd-dim:#3f7a5c;
+    --tile:#F4F6F4; --tile-line:#cfd6cf; --ink:#15201A; --muted:#5d6b63;
+    --blue:#39B3F2; --blue-lo:#0A6FB0; --amber:#F4C13B; --green:#46d17a;
+    --term-bg:#0c1410; --hex:#7CFCB0;
+    --cur:#F4C13B; --mid:#39B3F2; --found:#46d17a; --disc:#39413c;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);font-family:"Inter",system-ui,sans-serif;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255,255,255,.5), transparent 40%),
+      repeating-linear-gradient(0deg,#e2e5e8 0 1px,transparent 1px 22px),
+      repeating-linear-gradient(90deg,#e2e5e8 0 1px,transparent 1px 22px),#eceef1}
+  .stage{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+  .pokedex{background:linear-gradient(168deg,var(--red-hi),var(--red) 38%,var(--red-lo));
+    border-radius:24px;padding:0 0 18px;border:1px solid var(--red-edge);overflow:hidden;
+    box-shadow:0 2px 0 rgba(255,255,255,.35) inset,0 -6px 0 var(--red-edge) inset,0 26px 50px -26px rgba(120,10,15,.7)}
+  .lid{display:flex;align-items:center;gap:16px;padding:18px 22px 16px;border-bottom:5px solid var(--red-edge);
+    background:linear-gradient(180deg,rgba(255,255,255,.12),transparent);position:relative}
+  .lens{width:60px;height:60px;border-radius:50%;flex:none;position:relative;
+    background:radial-gradient(circle at 34% 30%,#d8f4ff 0 6%,var(--blue) 36%,var(--blue-lo) 80%);
+    box-shadow:0 0 0 5px #fff,0 0 0 9px var(--red-edge),0 0 22px 3px rgba(70,180,255,.55)}
+  .lens::before{content:"";position:absolute;top:10px;left:14px;width:16px;height:11px;background:rgba(255,255,255,.85);border-radius:50%;transform:rotate(-25deg)}
+  .brand{margin-left:auto;text-align:right;color:#fff}
+  .brand h1{font-family:"Space Grotesk",sans-serif;font-weight:700;margin:0;font-size:clamp(19px,3vw,27px);letter-spacing:-.02em;text-shadow:0 2px 0 var(--red-edge)}
+  .brand p{margin:1px 0 0;font-size:12px;opacity:.92}
+  nav{margin-top:7px;display:flex;gap:7px;justify-content:flex-end}
+  nav a{font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;text-decoration:none}
+  nav a.off{color:var(--red-lo);background:#fff}
+  nav a.on{color:#fff;background:rgba(0,0,0,.22)}
+
+  .deck{padding:16px 22px 4px;display:flex;flex-direction:column;gap:11px}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .ctl{display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.13);padding:6px 9px;border-radius:12px}
+  label.tiny{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#ffd9da;font-weight:700}
+  button,select,input{font-family:inherit;font-size:14px}
+  button{border:1px solid rgba(0,0,0,.18);background:#fff;color:var(--ink);padding:10px 14px;border-radius:11px;
+    cursor:pointer;font-weight:600;box-shadow:0 2px 0 rgba(0,0,0,.18);transition:transform .05s,box-shadow .05s,background .15s}
+  button:hover{background:#f4f4f4}
+  button:active{transform:translateY(2px);box-shadow:0 0 0 rgba(0,0,0,.18)}
+  button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  button.primary{background:#fff;color:var(--red-lo)}
+  button.blue{background:#103a55;color:#fff;border-color:#000}
+  button.dark{background:#241016;color:#fff;border-color:#000}
+  select,input{border:1px solid rgba(0,0,0,.2);background:#fff;padding:9px 11px;border-radius:11px;color:var(--ink);box-shadow:0 2px 0 rgba(0,0,0,.12)}
+  input{min-width:120px}
+  :focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  /* tooltip do botão binária desabilitado */
+  .tipwrap{position:relative;display:inline-flex}
+  .tipwrap[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:115%;left:50%;transform:translateX(-50%);
+    background:#241016;color:#fff;font-size:11px;font-weight:500;padding:6px 9px;border-radius:8px;white-space:nowrap;z-index:9;box-shadow:0 6px 16px -6px rgba(0,0,0,.6)}
+
+  .screen-frame{margin:12px 18px 0;border-radius:16px;padding:10px;background:linear-gradient(180deg,#7c1418,#5e0f13);
+    box-shadow:0 3px 0 rgba(255,255,255,.12) inset,0 -3px 8px rgba(0,0,0,.3) inset}
+  .screen{background:linear-gradient(180deg,var(--screen),var(--screen-lo));border-radius:11px;padding:12px;border:1px solid #062018;
+    box-shadow:0 0 0 2px #0c3a2b inset,0 10px 24px -12px rgba(0,0,0,.7) inset}
+  .statusbar{display:flex;align-items:center;gap:9px;font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--lcd);margin-bottom:10px;text-shadow:0 0 6px rgba(124,252,176,.4)}
+  .dot{width:9px;height:9px;border-radius:50%;background:#2c5a47;flex:none}
+  .dot.ok{background:var(--green)} .dot.err{background:#ff6b6b}
+  .pill{background:rgba(124,252,176,.12);border:1px solid var(--lcd-dim);padding:1px 7px;border-radius:6px}
+
+  /* faixa de animação */
+  .viz{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;padding:8px 2px 2px}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:2px;width:40px}
+  .cell .ptr{height:14px;font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;color:var(--lcd);display:flex;gap:2px}
+  .cell .ptr .I{color:var(--found)} .cell .ptr .M{color:var(--mid)} .cell .ptr .F{color:#ff9aa0}
+  .cell .box{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:600;background:#173f30;color:#cfeede;border:1.5px solid #245a45;transition:all .12s}
+  .cell .idx{font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--lcd-dim)}
+  .cell.seen .box{opacity:.5}
+  .cell.current .box{background:var(--cur);color:#3a2c00;border-color:#fff;transform:translateY(-3px);box-shadow:0 0 12px var(--cur)}
+  .cell.mid .box{background:var(--mid);color:#04263b;border-color:#fff;transform:translateY(-3px);box-shadow:0 0 12px var(--mid)}
+  .cell.discarded .box{background:#10211a;color:#3a4a42;border-color:#16261f;opacity:.4;text-decoration:line-through}
+  .cell.found .box{background:var(--found);color:#063019;border-color:#fff;box-shadow:0 0 16px var(--found)}
+
+  .controls-anim{display:flex;gap:7px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px}
+  .controls-anim button{padding:7px 12px;font-size:13px}
+  .controls-anim input[type=range]{accent-color:var(--lcd)}
+  .note{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--lcd);text-align:center;margin-top:8px;min-height:18px}
+
+  .grid-2{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin:14px 18px 0}
+  @media(max-width:880px){.grid-2{grid-template-columns:1fr}}
+  .panel{background:#fbf4f0;border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:14px;box-shadow:0 1px 0 #fff inset,0 8px 20px -16px rgba(0,0,0,.5)}
+  .panel>h2{font-family:"Space Grotesk",sans-serif;font-size:13.5px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .ball{width:16px;height:16px;border-radius:50%;flex:none;background:linear-gradient(180deg,var(--red) 0 50%,#fff 50% 100%);border:1.5px solid #20100f;position:relative}
+  .ball::after{content:"";position:absolute;inset:0;margin:auto;width:5px;height:5px;border-radius:50%;background:#fff;border:1.5px solid #20100f}
+  .eyebrow{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--red-lo);border:1px solid var(--red);border-radius:5px;padding:1px 6px}
+
+  /* pseudocódigo */
+  .pseudo-tabs{display:flex;gap:6px;margin-bottom:9px}
+  .pseudo-tabs button{padding:5px 11px;font-size:12px;border-radius:9px}
+  .pseudo-tabs button.active{background:#241016;color:#fff;border-color:#000}
+  .pseudo{background:var(--term-bg);border-radius:11px;padding:10px 6px;font-family:"JetBrains Mono",monospace;font-size:12.5px;line-height:1.7;color:#bcd3c4;border:1px solid #000;overflow:auto}
+  .pseudo .ln{display:flex;gap:8px;padding:1px 10px;border-radius:5px}
+  .pseudo .ln .n{color:#41614f;width:14px;text-align:right;flex:none}
+  .pseudo .ln.hot{background:rgba(244,193,59,.18);color:#ffe8a8}
+  .pseudo .ln.hot .n{color:var(--amber)}
+
+  /* contador de comparações */
+  .cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+  .cmp-card{border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(0,0,0,.1)}
+  .cmp-card.lin{background:#fdf3e7} .cmp-card.bin{background:#e8f4fb}
+  .cmp-card .big{font-family:"JetBrains Mono",monospace;font-size:30px;font-weight:700;line-height:1}
+  .cmp-card.lin .big{color:#b9701a} .cmp-card.bin .big{color:#0a6fb0}
+  .cmp-card .lbl{font-size:11px;color:var(--muted);margin-top:4px;font-weight:600}
+  .cmp-foot{font-size:11px;color:var(--muted);margin-top:8px;text-align:center}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:right;padding:6px 7px;border-bottom:1px solid rgba(0,0,0,.1)}
+  th:first-child,td:first-child{text-align:left}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  td.lin{color:#b9701a;font-family:"JetBrains Mono",monospace}
+  td.bin{color:#0a6fb0;font-family:"JetBrains Mono",monospace}
+  .chart-tools{display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:12px;color:var(--muted)}
+
+  /* substring */
+  .sub-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .matches{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:#fff;border:1px solid var(--tile-line);border-radius:8px;padding:5px 9px;font-size:12px;font-weight:600;text-transform:capitalize}
+  .chip b{color:var(--red-lo)}
+  .sub-count{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);margin-left:auto}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#241016;color:#fff;padding:11px 16px;border-radius:11px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:#8b1418}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="pokedex">
+    <div class="lid">
+      <span class="lens" aria-hidden="true"></span>
+      <div class="brand">
+        <h1>Pokédex · Busca</h1>
+        <p>Busca linear vs binária — passo a passo</p>
+        <nav>
+          <a href="/" class="off">📦 Dados</a>
+          <a href="/busca" class="on">🔍 Busca</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="deck">
+      <div class="row">
+        <span class="ctl">
+          <label class="tiny" for="selKey">Chave</label>
+          <select id="selKey">
+            <option value="id">Número (id)</option>
+            <option value="name">Nome</option>
+          </select>
+        </span>
+        <span class="ctl">
+          <label class="tiny" for="selN">Amostra</label>
+          <select id="selN">
+            <option value="16">16</option>
+            <option value="32" selected>32</option>
+            <option value="64">64</option>
+          </select>
+        </span>
+        <button id="btnSort" class="primary">↕ Ordenar pela chave</button>
+        <span class="ctl">
+          <label class="tiny" for="alvo">Alvo</label>
+          <input id="alvo" placeholder="ex.: 25" />
+          <button id="btnRand" class="dark" style="padding:8px 10px">🎲</button>
+        </span>
+      </div>
+      <div class="row">
+        <button id="btnLinear" class="dark">▶ Buscar Linear</button>
+        <span class="tipwrap" id="binWrap" data-tip="Ordene a lista pela chave para liberar a busca binária">
+          <button id="btnBinary" class="blue" disabled>▶ Buscar Binária</button>
+        </span>
+        <span style="color:#ffd9da;font-size:12px;font-weight:600" id="precond">⚠ lista embaralhada — ordene para usar a binária</span>
+      </div>
+    </div>
+
+    <!-- Tela com a animação -->
+    <div class="screen-frame">
+      <div class="screen">
+        <div class="statusbar">
+          <span id="dot" class="dot"></span>
+          <span id="src">Carregando dataset…</span>
+          <span style="margin-left:auto" class="pill" id="liveCmp">comparações: 0</span>
+        </div>
+        <div id="viz" class="viz"></div>
+        <div class="controls-anim">
+          <button id="btnPlay" disabled>▶ Play</button>
+          <button id="btnPrev" disabled>⟨ Passo</button>
+          <button id="btnNext" disabled>Passo ⟩</button>
+          <button id="btnReset" disabled>↺ Reset</button>
+          <label class="tiny" style="color:#bfe9cf">Velocidade</label>
+          <input id="speed" type="range" min="60" max="1100" value="380" step="20" style="width:120px">
+        </div>
+        <div class="note" id="note">Carregue/ordene e dispare uma busca para ver a animação.</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Pseudocódigo -->
+      <div class="panel">
+        <h2><span class="ball"></span> Pseudocódigo <span class="eyebrow">SYNC</span></h2>
+        <div class="pseudo-tabs" id="pseudoTabs">
+          <button data-p="linear" class="active">Linear</button>
+          <button data-p="binary">Binária</button>
+        </div>
+        <div id="pseudo" class="pseudo"></div>
+      </div>
+
+      <!-- Comparações na mesma busca -->
+      <div class="panel">
+        <h2><span class="ball"></span> Comparações nesta busca <span class="eyebrow">N=<span id="cmpN">0</span></span></h2>
+        <div class="cmp-grid">
+          <div class="cmp-card lin"><div class="big" id="cmpLin">–</div><div class="lbl">LINEAR</div></div>
+          <div class="cmp-card bin"><div class="big" id="cmpBin">–</div><div class="lbl">BINÁRIA</div></div>
+        </div>
+        <div class="cmp-foot" id="cmpFoot">Dispare uma busca para comparar os dois algoritmos sobre o mesmo alvo.</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Gráfico de crescimento -->
+      <div class="panel">
+        <h2><span class="ball"></span> Crescimento das comparações <span class="eyebrow">O(n) vs O(log n)</span></h2>
+        <div class="chart-tools">
+          <label><input type="checkbox" id="logY"> escala log no eixo Y</label>
+          <span>· média empírica por tamanho</span>
+        </div>
+        <div id="chart"></div>
+        <table id="chartTable" style="margin-top:10px"></table>
+      </div>
+
+      <!-- Busca por substring -->
+      <div class="panel">
+        <h2><span class="ball"></span> Busca parcial (substring) <span class="eyebrow">CONTÉM</span></h2>
+        <div class="sub-row">
+          <input id="sub" placeholder='ex.: "char", "saur", "mew"…' style="flex:1">
+          <button id="btnSub" class="dark">🔎 Buscar</button>
+          <span class="sub-count" id="subCount"></span>
+        </div>
+        <div id="matches" class="matches"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+const toastEl=$("toast");
+function toast(m,e=false){toastEl.textContent=m;toastEl.className="toast show"+(e?" err":"");clearTimeout(toast._t);toast._t=setTimeout(()=>toastEl.className="toast",3000);}
+
+// ---------------------------------------------------------------- estado
+let dataset=[];          // dataset completo (reaproveitado da persistência/API)
+let viz=[];              // subconjunto exibido na animação
+let sortedKey=null;      // chave pela qual 'viz' está ordenado (ou null)
+let steps=[], si=0, timer=null, algo="linear";
+
+const KEY=()=>$("selKey").value;
+const keyOf=(p)=> KEY()==="id" ? p.id : p.name.toLowerCase();
+const cmp=(a,b)=> KEY()==="id" ? (a-b) : (a<b?-1:a>b?1:0);
+function parseAlvo(){const v=$("alvo").value.trim(); return KEY()==="id" ? Number(v) : v.toLowerCase();}
+
+// ---------------------------------------------------------------- dataset
+async function carregarDataset(){
+  // 1) tenta reaproveitar o arquivo salvo (integra com o projeto de persistência)
+  try{
+    const r=await fetch("/api/offline?formato=json"); const j=await r.json();
+    if(j.ok && j.dados.length){ usarDataset(j.dados, `<span class="pill">arquivo JSON</span> (cache) · ${j.total}`); return; }
+  }catch(e){}
+  // 2) senão, baixa da API
+  try{
+    const r=await fetch("/api/carregar?limite=151"); const j=await r.json();
+    if(!j.ok) throw new Error(j.erro||"falha");
+    usarDataset(j.dados, `<span class="pill">PokéAPI</span> (online) · ${j.total}`);
+  }catch(e){ $("dot").className="dot err"; $("src").textContent="Não foi possível carregar o dataset (offline e sem cache)."; }
+}
+function usarDataset(d, srcHtml){
+  dataset=d; $("dot").className="dot ok"; $("src").innerHTML=srcHtml;
+  montarViz();
+  desenharGrafico();
+}
+const shuffle=(a)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+function montarViz(){
+  const n=parseInt($("selN").value,10);
+  viz=shuffle(dataset.slice(0,n));   // embaralha → binária começa bloqueada (pré-condição visível)
+  sortedKey=null; steps=[]; si=0; pararPlay();
+  atualizarPrecond(); renderViz(null); renderPseudo(); $("liveCmp").textContent="comparações: 0";
+  $("note").textContent="Lista embaralhada. Ordene pela chave e dispare uma busca.";
+  ["btnPlay","btnPrev","btnNext","btnReset"].forEach(id=>$(id).disabled=true);
+}
+
+// pré-condição da binária
+function atualizarPrecond(){
+  const ok = sortedKey===KEY();
+  $("btnBinary").disabled = !ok;
+  $("binWrap").setAttribute("data-tip", ok ? "" : "Ordene a lista pela chave para liberar a busca binária");
+  $("precond").style.display = ok ? "none" : "inline";
+  $("precond").textContent = "⚠ lista não ordenada por “"+(KEY()==="id"?"número":"nome")+"” — ordene para usar a binária";
+}
+function ordenar(){
+  viz.sort((a,b)=>cmp(keyOf(a),keyOf(b)));
+  sortedKey=KEY(); steps=[]; si=0; pararPlay();
+  atualizarPrecond(); renderViz(null);
+  $("note").textContent="Lista ordenada por "+(KEY()==="id"?"número":"nome")+". Agora a binária está liberada.";
+  toast("Lista ordenada ✔");
+}
+
+// ---------------------------------------------------------------- pseudocódigo
+const PSEUDO={
+  linear:[
+    "função buscaLinear(A, alvo):",
+    "  para i de 0 até n-1:",
+    "    se A[i] == alvo:",
+    "      retorna i",
+    "  retorna -1   // não encontrado",
+  ],
+  binary:[
+    "função buscaBinaria(A, alvo):",
+    "  inicio ← 0 ; fim ← n-1",
+    "  enquanto inicio ≤ fim:",
+    "    meio ← (inicio + fim) div 2",
+    "    se A[meio] == alvo: retorna meio",
+    "    senão se A[meio] < alvo: inicio ← meio+1",
+    "    senão: fim ← meio-1",
+    "  retorna -1   // não encontrado",
+  ],
+};
+let pseudoView="linear";
+function renderPseudo(hot=-1){
+  const lines=PSEUDO[pseudoView];
+  $("pseudo").innerHTML=lines.map((l,i)=>
+    `<div class="ln ${i===hot?'hot':''}"><span class="n">${i+1}</span><span>${l.replace(/</g,"&lt;")}</span></div>`).join("");
+}
+
+// ---------------------------------------------------------------- geração de passos
+function passosLinear(arr, alvo){
+  const steps=[]; let comp=0;
+  for(let i=0;i<arr.length;i++){
+    comp++;
+    steps.push({line:2, comp, current:i, note:`compara A[${i}]=${keyOf(arr[i])} com ${alvo}`});
+    if(keyOf(arr[i])===alvo){ steps.push({line:3, comp, found:i, note:`encontrado no índice ${i} após ${comp} comparações`}); return {steps,comp,idx:i}; }
+  }
+  steps.push({line:4, comp, found:-1, note:`não encontrado · ${comp} comparações (toda a lista)`});
+  return {steps,comp,idx:-1};
+}
+function passosBinaria(arr, alvo){
+  const steps=[]; let comp=0, lo=0, hi=arr.length-1;
+  steps.push({line:1, comp, lo, hi, note:`inicio=0, fim=${hi}`});
+  while(lo<=hi){
+    steps.push({line:2, comp, lo, hi, note:`${lo} ≤ ${hi}? sim`});
+    const mid=Math.floor((lo+hi)/2);
+    steps.push({line:3, comp, lo, hi, mid, note:`meio = (${lo}+${hi})/2 = ${mid}`});
+    comp++;
+    const c=cmp(keyOf(arr[mid]), alvo);
+    if(c===0){ steps.push({line:4, comp, lo, hi, mid, found:mid, note:`A[${mid}]=${keyOf(arr[mid])} == alvo · achou em ${comp} comparações`}); return {steps,comp,idx:mid}; }
+    if(c<0){ steps.push({line:5, comp, lo, hi, mid, note:`A[${mid}] < alvo → descarta [${lo}..${mid}], inicio=${mid+1}`}); lo=mid+1; }
+    else   { steps.push({line:6, comp, lo, hi, mid, note:`A[${mid}] > alvo → descarta [${mid}..${hi}], fim=${mid-1}`}); hi=mid-1; }
+  }
+  steps.push({line:7, comp, found:-1, note:`inicio > fim · não encontrado · ${comp} comparações`});
+  return {steps,comp,idx:-1};
+}
+
+// ---------------------------------------------------------------- render da faixa
+function renderViz(step){
+  const html=viz.map((p,i)=>{
+    let cls=""; let ptr="";
+    if(step){
+      if(algo==="linear"){
+        if(step.found===i) cls="found";
+        else if(step.current===i) cls="current";
+        else if(step.current!=null && i<step.current) cls="seen";
+      }else{
+        const lo=step.lo, hi=step.hi;
+        if(lo!=null && (i<lo || i>hi)) cls="discarded";
+        if(step.found===i) cls="found";
+        else if(step.mid===i) cls="mid";
+        // ponteiros
+        let labs=[];
+        if(i===lo) labs.push('<span class="I">I</span>');
+        if(i===step.mid) labs.push('<span class="M">M</span>');
+        if(i===hi) labs.push('<span class="F">F</span>');
+        ptr=labs.join("");
+      }
+    }
+    const val = KEY()==="id" ? p.id : p.name.slice(0,4);
+    return `<div class="cell ${cls}"><div class="ptr">${ptr}</div><div class="box" title="${p.name}">${val}</div><div class="idx">${i}</div></div>`;
+  }).join("");
+  $("viz").innerHTML=html;
+}
+
+// ---------------------------------------------------------------- comparar (req 6)
+function compararAmbos(alvo){
+  const lin=passosLinear(viz, alvo);
+  let bin=null;
+  if(sortedKey===KEY()) bin=passosBinaria(viz, alvo);
+  $("cmpN").textContent=viz.length; $("cmpLin").textContent=lin.comp;
+  $("cmpBin").textContent = bin? bin.comp : "—";
+  $("cmpFoot").innerHTML = bin
+    ? `Mesmo alvo, mesma lista (n=${viz.length}). A binária fez <b>${bin.comp}</b> vs <b>${lin.comp}</b> da linear.`
+    : `Linear não precisa de ordem. Ordene a lista para medir a binária no mesmo alvo.`;
+}
+
+// ---------------------------------------------------------------- disparar busca
+function rodar(tipo){
+  const alvo=parseAlvo();
+  if($("alvo").value.trim()===""){ toast("Digite um alvo (ou use 🎲).", true); return; }
+  if(KEY()==="id" && Number.isNaN(alvo)){ toast("Para a chave Número, digite um id válido.", true); return; }
+  algo=tipo; pseudoView=tipo; trocarTab();
+  const res = tipo==="linear" ? passosLinear(viz, alvo) : passosBinaria(viz, alvo);
+  steps=res.steps; si=0;
+  compararAmbos(alvo);
+  ["btnPlay","btnPrev","btnNext","btnReset"].forEach(id=>$(id).disabled=false);
+  mostrarPasso(0); play();
+}
+
+function mostrarPasso(i){
+  i=Math.max(0,Math.min(i,steps.length-1)); si=i;
+  const s=steps[i];
+  renderViz(s); renderPseudo(s.line-1);
+  $("liveCmp").textContent="comparações: "+s.comp;
+  $("note").textContent=s.note||"";
+}
+function play(){
+  pararPlay(); $("btnPlay").textContent="⏸ Pause";
+  timer=setInterval(()=>{
+    if(si>=steps.length-1){ pararPlay(); return; }
+    mostrarPasso(si+1);
+  }, parseInt($("speed").value,10));
+}
+function pararPlay(){ if(timer){clearInterval(timer);timer=null;} $("btnPlay").textContent="▶ Play"; }
+
+// ---------------------------------------------------------------- gráfico (req 7)
+function mediaComparacoes(n, tipo, amostras=160){
+  // array sintético ordenado [1..n]; mede média de comparações em alvos existentes
+  let total=0;
+  for(let k=0;k<amostras;k++){
+    const alvo=1+Math.floor(Math.random()*n);
+    if(tipo==="linear"){ total += alvo; }            // valor v está no índice v-1 → v comparações
+    else{ let lo=0,hi=n-1,c=0; while(lo<=hi){const m=Math.floor((lo+hi)/2);c++;const v=m+1;if(v===alvo)break;else if(v<alvo)lo=m+1;else hi=m-1;} total+=c; }
+  }
+  return total/amostras;
+}
+const TAMANHOS=[10,50,100,500,1000,5000];
+function desenharGrafico(){
+  const log=$("logY").checked;
+  const lin=TAMANHOS.map(n=>mediaComparacoes(n,"linear"));
+  const bin=TAMANHOS.map(n=>mediaComparacoes(n,"binary"));
+  const W=440,H=240,pad=42;
+  const ys=log?(v)=>Math.log10(Math.max(v,1)):(v)=>v;
+  const maxY=Math.max(...lin.map(ys),...bin.map(ys));
+  const x=(i)=>pad+i*(W-pad-12)/(TAMANHOS.length-1);
+  const y=(v)=>H-pad-(ys(v)/maxY)*(H-pad-14);
+  const path=(arr)=>arr.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join(" ");
+  const dots=(arr,col)=>arr.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${col}"/>`).join("");
+  const xlabels=TAMANHOS.map((n,i)=>`<text x="${x(i)}" y="${H-pad+16}" font-size="10" fill="#5d6b63" text-anchor="middle">${n}</text>`).join("");
+  // marca o valor da binária (fica baixinho) para ficar visível
+  const binLabels=bin.map((v,i)=>`<text x="${x(i)}" y="${y(v)-7}" font-size="9" fill="#0a6fb0" text-anchor="middle">${v.toFixed(0)}</text>`).join("");
+  $("chart").innerHTML=`
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="background:#fff;border:1px solid #e3e3e3;border-radius:10px">
+      <line x1="${pad}" y1="14" x2="${pad}" y2="${H-pad}" stroke="#ccc"/>
+      <line x1="${pad}" y1="${H-pad}" x2="${W-6}" y2="${H-pad}" stroke="#ccc"/>
+      <path d="${path(lin)}" fill="none" stroke="#E0742A" stroke-width="2.5"/>
+      <path d="${path(bin)}" fill="none" stroke="#0a6fb0" stroke-width="2.5"/>
+      ${dots(lin,"#E0742A")}${dots(bin,"#0a6fb0")}${binLabels}${xlabels}
+      <text x="${pad}" y="11" font-size="10" fill="#5d6b63">comparações${log?" (log)":""}</text>
+      <text x="${W-6}" y="${H-6}" font-size="10" fill="#5d6b63" text-anchor="end">tamanho da amostra (n)</text>
+      <rect x="${pad+6}" y="20" width="10" height="10" fill="#E0742A"/><text x="${pad+20}" y="29" font-size="10" fill="#444">Linear ~ n/2</text>
+      <rect x="${pad+96}" y="20" width="10" height="10" fill="#0a6fb0"/><text x="${pad+110}" y="29" font-size="10" fill="#444">Binária ~ log₂n</text>
+    </svg>`;
+  $("chartTable").innerHTML=`<thead><tr><th>n</th><th>Linear (méd.)</th><th>Binária (méd.)</th></tr></thead><tbody>`+
+    TAMANHOS.map((n,i)=>`<tr><td>${n}</td><td class="lin">${lin[i].toFixed(0)}</td><td class="bin">${bin[i].toFixed(1)}</td></tr>`).join("")+`</tbody>`;
+}
+
+// ---------------------------------------------------------------- substring (req 8)
+function buscarSub(){
+  const t=$("sub").value.trim().toLowerCase();
+  if(!t){ $("matches").innerHTML=""; $("subCount").textContent=""; return; }
+  const hits=dataset.filter(p=>p.name.toLowerCase().includes(t));
+  $("subCount").textContent=`${hits.length} de ${dataset.length} (varredura linear)`;
+  $("matches").innerHTML = hits.length
+    ? hits.map(p=>`<span class="chip">#${p.id} ${p.name.replace(new RegExp("("+t+")","ig"),"<b>$1</b>")}</span>`).join("")
+    : `<span style="color:var(--muted);font-size:13px">Nenhum Pokémon contém “${t}”.</span>`;
+}
+
+// ---------------------------------------------------------------- tabs e eventos
+function trocarTab(){ [...$("pseudoTabs").children].forEach(b=>b.classList.toggle("active",b.dataset.p===pseudoView)); renderPseudo(steps[si]?steps[si].line-1:-1); }
+[...$("pseudoTabs").children].forEach(b=>b.onclick=()=>{pseudoView=b.dataset.p;trocarTab();});
+
+$("selKey").onchange=()=>{$("alvo").value="";montarViz();};
+$("selN").onchange=montarViz;
+$("btnSort").onclick=ordenar;
+$("btnRand").onclick=()=>{ if(!viz.length)return; const p=viz[Math.floor(Math.random()*viz.length)]; $("alvo").value = KEY()==="id"?p.id:p.name; };
+$("btnLinear").onclick=()=>rodar("linear");
+$("btnBinary").onclick=()=>rodar("binary");
+$("btnPlay").onclick=()=>{ if(timer)pararPlay(); else { if(si>=steps.length-1)si=0; play(); } };
+$("btnNext").onclick=()=>{pararPlay();mostrarPasso(si+1);};
+$("btnPrev").onclick=()=>{pararPlay();mostrarPasso(si-1);};
+$("btnReset").onclick=()=>{pararPlay();mostrarPasso(0);};
+$("speed").oninput=()=>{ if(timer)play(); };
+$("logY").onchange=desenharGrafico;
+$("btnSub").onclick=buscarSub;
+$("sub").oninput=buscarSub;
+
+renderPseudo();
+carregarDataset();
+</script>
+</body>
+</html>

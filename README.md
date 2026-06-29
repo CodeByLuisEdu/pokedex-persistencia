@@ -89,6 +89,32 @@ legibilidade e interoperabilidade. CSV é um bom meio-termo para dados tabulares
 
 ---
 
+## 🔍 Seção de Busca (algoritmos interativos)
+
+Além da persistência, o projeto tem uma página **`/busca`** que reutiliza o mesmo
+dataset (lendo do **arquivo JSON salvo** quando existe — integração direta com a
+persistência — ou baixando da API se não houver cache). Ela demonstra na prática a
+relação entre ordenação e busca:
+
+- **Busca linear e binária animadas** passo a passo (cada comparação é um quadro).
+- Na **binária**, marca `início (I)`, `meio (M)` e `fim (F)` e escurece o
+  **intervalo descartado** a cada passo.
+- **Pseudocódigo ao lado** da animação, com a **linha atual destacada**.
+- **Pré-condição:** o botão *Binária* fica **desabilitado (com tooltip)** enquanto
+  a lista não estiver ordenada pela chave de busca (a lista começa embaralhada de
+  propósito, para tornar a regra visível).
+- **Contador de comparações** dos dois algoritmos sobre o **mesmo alvo**, lado a lado.
+- **Gráfico de crescimento** das comparações conforme o tamanho da amostra
+  (10, 50, 100, 500, 1000, 5000), comparando **O(n)** da linear com **O(log n)** da
+  binária (com opção de escala logarítmica no eixo Y).
+- **Busca parcial por substring** (ex.: nomes que contêm `char`), além da exata.
+
+```
+GET /busca   -> página dos algoritmos de busca (reaproveita o dataset)
+```
+
+---
+
 ## 🏗️ Arquitetura
 
 ```
@@ -109,9 +135,10 @@ legibilidade e interoperabilidade. CSV é um bom meio-termo para dados tabulares
 
 ```
 pokedex-persistencia/
-├── app.py             # backend Flask (rotas/API + serve o index.html)
+├── app.py             # backend Flask (rotas/API + serve as páginas)
 ├── persistencia.py    # núcleo: salvar/carregar nos 4 formatos + hexdump
-├── index.html         # frontend (ordenação, busca, offline, comparação, inspeção)
+├── index.html         # tela de dados/persistência (ordenação, busca, offline, comparação)
+├── busca.html         # tela de algoritmos de busca (linear/binária animadas + gráfico)
 ├── dados/             # cache em disco (gerado em runtime; ignorado no git)
 ├── requirements.txt
 └── README.md
