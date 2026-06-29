@@ -115,6 +115,28 @@ GET /busca   -> página dos algoritmos de busca (reaproveita o dataset)
 
 ---
 
+## 🔀 Seção de Ordenação (algoritmos interativos)
+
+A página **`/ordenacao`** reutiliza o mesmo dataset e implementa **manualmente** os
+seis algoritmos clássicos (sem `sort()` pronto), com:
+
+- **Bubble, Selection, Insertion, Merge, Quick e Heap Sort** animados em barras,
+  com cores para **comparação**, **troca**, **pivô** e **ordenado**.
+- Controles **Play / Pause / Passo / Reset** e **slider de velocidade**.
+- Indicadores em tempo real: **nº de comparações**, **trocas/movimentos** e **tempo**.
+- **Narração** do passo atual e **pseudocódigo com a linha em destaque**.
+- Para cada algoritmo: **estrutura de dados**, explicação em linguagem simples e
+  **complexidade** (melhor/médio/pior + espaço) com justificativa.
+- No **Heap Sort**, o **heap binário é desenhado como árvore** em paralelo ao array.
+- **Relatório comparativo**: roda os 6 sobre o mesmo dataset (tamanhos 10/50/100/500),
+  com tabela (comparações, trocas, tempo, complexidade) e **gráfico de barras**.
+
+```
+GET /ordenacao  -> página dos algoritmos de ordenação (reaproveita o dataset)
+```
+
+---
+
 ## 🏗️ Arquitetura
 
 ```
@@ -139,6 +161,7 @@ pokedex-persistencia/
 ├── persistencia.py    # núcleo: salvar/carregar nos 4 formatos + hexdump
 ├── index.html         # tela de dados/persistência (ordenação, busca, offline, comparação)
 ├── busca.html         # tela de algoritmos de busca (linear/binária animadas + gráfico)
+├── ordenacao.html     # tela de algoritmos de ordenação (6 algoritmos + relatório)
 ├── dados/             # cache em disco (gerado em runtime; ignorado no git)
 ├── requirements.txt
 └── README.md

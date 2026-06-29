@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pokédex · Algoritmos de Ordenação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#D7282F;--red-lo:#9E1B22;--red-hi:#E8474D;--red-edge:#7A1318;
+    --screen:#0E2E22;--screen-lo:#0A2018;--lcd:#7CFCB0;--lcd-dim:#3f7a5c;
+    --tile:#F4F6F4;--tile-line:#cfd6cf;--ink:#15201A;--muted:#5d6b63;
+    --blue:#39B3F2;--blue-lo:#0A6FB0;--amber:#F4C13B;--green:#46d17a;
+    --term-bg:#0c1410;
+    --cmp:#F4C13B;--swp:#ff6b6b;--done:#46d17a;--pivot:#c77dff;--bar:#3a9bd4;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);font-family:"Inter",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(circle at 12% 18%,rgba(255,255,255,.5),transparent 40%),
+      repeating-linear-gradient(0deg,#e2e5e8 0 1px,transparent 1px 22px),
+      repeating-linear-gradient(90deg,#e2e5e8 0 1px,transparent 1px 22px),#eceef1}
+  .stage{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+  .pokedex{background:linear-gradient(168deg,var(--red-hi),var(--red) 38%,var(--red-lo));border-radius:24px;padding:0 0 18px;border:1px solid var(--red-edge);overflow:hidden;
+    box-shadow:0 2px 0 rgba(255,255,255,.35) inset,0 -6px 0 var(--red-edge) inset,0 26px 50px -26px rgba(120,10,15,.7)}
+  .lid{display:flex;align-items:center;gap:16px;padding:18px 22px 16px;border-bottom:5px solid var(--red-edge);background:linear-gradient(180deg,rgba(255,255,255,.12),transparent)}
+  .lens{width:60px;height:60px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 34% 30%,#d8f4ff 0 6%,var(--blue) 36%,var(--blue-lo) 80%);box-shadow:0 0 0 5px #fff,0 0 0 9px var(--red-edge),0 0 22px 3px rgba(70,180,255,.55)}
+  .lens::before{content:"";position:absolute;top:10px;left:14px;width:16px;height:11px;background:rgba(255,255,255,.85);border-radius:50%;transform:rotate(-25deg)}
+  .brand{margin-left:auto;text-align:right;color:#fff}
+  .brand h1{font-family:"Space Grotesk",sans-serif;font-weight:700;margin:0;font-size:clamp(19px,3vw,27px);letter-spacing:-.02em;text-shadow:0 2px 0 var(--red-edge)}
+  .brand p{margin:1px 0 0;font-size:12px;opacity:.92}
+  nav{margin-top:7px;display:flex;gap:7px;justify-content:flex-end}
+  nav a{font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;text-decoration:none}
+  nav a.off{color:var(--red-lo);background:#fff}
+  nav a.on{color:#fff;background:rgba(0,0,0,.22)}
+
+  .deck{padding:16px 22px 4px;display:flex;flex-direction:column;gap:11px}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .ctl{display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.13);padding:6px 9px;border-radius:12px}
+  label.tiny{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#ffd9da;font-weight:700}
+  button,select,input{font-family:inherit;font-size:14px}
+  button{border:1px solid rgba(0,0,0,.18);background:#fff;color:var(--ink);padding:10px 14px;border-radius:11px;cursor:pointer;font-weight:600;box-shadow:0 2px 0 rgba(0,0,0,.18);transition:transform .05s,box-shadow .05s,background .15s}
+  button:hover{background:#f4f4f4} button:active{transform:translateY(2px);box-shadow:none} button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  button.primary{background:#fff;color:var(--red-lo)} button.dark{background:#241016;color:#fff;border-color:#000}
+  select,input{border:1px solid rgba(0,0,0,.2);background:#fff;padding:9px 11px;border-radius:11px;color:var(--ink);box-shadow:0 2px 0 rgba(0,0,0,.12)}
+  :focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+
+  .screen-frame{margin:12px 18px 0;border-radius:16px;padding:10px;background:linear-gradient(180deg,#7c1418,#5e0f13);box-shadow:0 3px 0 rgba(255,255,255,.12) inset,0 -3px 8px rgba(0,0,0,.3) inset}
+  .screen{background:linear-gradient(180deg,var(--screen),var(--screen-lo));border-radius:11px;padding:12px;border:1px solid #062018;box-shadow:0 0 0 2px #0c3a2b inset,0 10px 24px -12px rgba(0,0,0,.7) inset}
+  .statusbar{display:flex;align-items:center;gap:14px;font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--lcd);margin-bottom:10px;text-shadow:0 0 6px rgba(124,252,176,.4);flex-wrap:wrap}
+  .stat{display:flex;gap:5px;align-items:baseline}
+  .stat b{font-size:16px;color:#eafff1}
+  .legend{display:flex;gap:12px;font-size:11px;color:#bfe9cf;margin-left:auto;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+  .bars{display:flex;align-items:flex-end;gap:2px;height:230px;padding:6px 4px 0}
+  .bar{flex:1;background:var(--bar);border-radius:4px 4px 0 0;position:relative;min-width:3px;transition:height .1s,background .1s}
+  .bar.cmp{background:var(--cmp)} .bar.swp{background:var(--swp)} .bar.done{background:var(--done)} .bar.pivot{background:var(--pivot)}
+  .bar span{position:absolute;top:-15px;left:0;right:0;text-align:center;font-size:9px;color:#bfe9cf;font-family:"JetBrains Mono",monospace}
+
+  .controls-anim{display:flex;gap:7px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px}
+  .controls-anim button{padding:7px 12px;font-size:13px}
+  #speed{accent-color:var(--lcd);width:120px}
+  .note{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--lcd);text-align:center;margin-top:8px;min-height:18px}
+
+  /* árvore do heap */
+  #heapWrap{display:none;margin-top:10px;background:#0a201a;border:1px solid #16332a;border-radius:10px;padding:6px}
+  #heapWrap h3{margin:4px 8px;font-size:11px;color:#bfe9cf;font-family:"JetBrains Mono",monospace;font-weight:600}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 18px 0}
+  @media(max-width:880px){.grid-2{grid-template-columns:1fr}}
+  .panel{background:#fbf4f0;border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:14px;box-shadow:0 1px 0 #fff inset,0 8px 20px -16px rgba(0,0,0,.5)}
+  .panel>h2{font-family:"Space Grotesk",sans-serif;font-size:13.5px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .ball{width:16px;height:16px;border-radius:50%;flex:none;background:linear-gradient(180deg,var(--red) 0 50%,#fff 50% 100%);border:1.5px solid #20100f;position:relative}
+  .ball::after{content:"";position:absolute;inset:0;margin:auto;width:5px;height:5px;border-radius:50%;background:#fff;border:1.5px solid #20100f}
+  .eyebrow{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--red-lo);border:1px solid var(--red);border-radius:5px;padding:1px 6px}
+
+  .pseudo{background:var(--term-bg);border-radius:11px;padding:10px 6px;font-family:"JetBrains Mono",monospace;font-size:12.5px;line-height:1.7;color:#bcd3c4;border:1px solid #000;overflow:auto;max-height:240px}
+  .pseudo .ln{display:flex;gap:8px;padding:1px 10px;border-radius:5px}
+  .pseudo .ln .n{color:#41614f;width:16px;text-align:right;flex:none}
+  .pseudo .ln.hot{background:rgba(244,193,59,.18);color:#ffe8a8}
+  .pseudo .ln.hot .n{color:var(--amber)}
+
+  .didatica p{margin:0 0 8px;font-size:13px}
+  .ds{display:inline-block;background:#eef6ff;border:1px solid #cfe3f5;color:#0a6fb0;font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;margin-bottom:8px}
+  .cx{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  .cx td,.cx th{border:1px solid #e7ddd5;padding:5px 7px;text-align:left}
+  .cx th{background:#f3e9e2;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .cx .just{color:var(--muted);font-size:11.5px}
+
+  /* relatório comparativo */
+  .rep-head{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  table.rep{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.rep th,table.rep td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,.1);text-align:right}
+  table.rep th:first-child,table.rep td:first-child{text-align:left}
+  table.rep th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  table.rep td.alg{font-weight:700}
+  table.rep .best{background:#e7f7ee}
+  table.rep .mono{font-family:"JetBrains Mono",monospace}
+  .cxtag{font-size:10px;color:#fff;padding:1px 5px;border-radius:5px}
+  .cx-n2{background:#d9893a} .cx-nlogn{background:#2f9e57}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#241016;color:#fff;padding:11px 16px;border-radius:11px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)} .toast.err{background:#8b1418}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="pokedex">
+    <div class="lid">
+      <span class="lens" aria-hidden="true"></span>
+      <div class="brand">
+        <h1>Pokédex · Ordenação</h1>
+        <p>6 algoritmos animados + relatório comparativo</p>
+        <nav>
+          <a href="/" class="off">📦 Dados</a>
+          <a href="/busca" class="off">🔍 Busca</a>
+          <a href="/ordenacao" class="on">🔀 Ordenação</a>
+        </nav>
+      </div>
+    </div>
+
+    <div class="deck">
+      <div class="row">
+        <span class="ctl">
+          <label class="tiny" for="selAlg">Algoritmo</label>
+          <select id="selAlg">
+            <option value="bubble">Bubble Sort</option>
+            <option value="selection">Selection Sort</option>
+            <option value="insertion">Insertion Sort</option>
+            <option value="merge">Merge Sort</option>
+            <option value="quick">Quick Sort</option>
+            <option value="heap">Heap Sort</option>
+          </select>
+        </span>
+        <span class="ctl">
+          <label class="tiny" for="selKey">Chave</label>
+          <select id="selKey">
+            <option value="base_experience">Experiência base</option>
+            <option value="weight">Peso</option>
+            <option value="height">Altura</option>
+            <option value="attack">Ataque</option>
+            <option value="speed">Velocidade</option>
+            <option value="hp">HP</option>
+          </select>
+        </span>
+        <span class="ctl">
+          <label class="tiny" for="selN">Amostra</label>
+          <select id="selN">
+            <option value="10">10</option>
+            <option value="16" selected>16</option>
+            <option value="24">24</option>
+            <option value="32">32</option>
+            <option value="48">48</option>
+          </select>
+        </span>
+        <button id="btnShuffle" class="primary">🎲 Embaralhar</button>
+      </div>
+    </div>
+
+    <div class="screen-frame">
+      <div class="screen">
+        <div class="statusbar">
+          <span class="stat">comparações <b id="cComp">0</b></span>
+          <span class="stat">trocas/mov. <b id="cSwap">0</b></span>
+          <span class="stat">tempo <b id="cTime">0.0s</b></span>
+          <span class="legend">
+            <span><i style="background:var(--cmp)"></i>comparando</span>
+            <span><i style="background:var(--swp)"></i>trocando</span>
+            <span><i style="background:var(--pivot)"></i>pivô</span>
+            <span><i style="background:var(--done)"></i>ordenado</span>
+          </span>
+        </div>
+        <div id="bars" class="bars"></div>
+
+        <div id="heapWrap"><h3>Heap binário (árvore) — paralelo ao array</h3><div id="heapTree"></div></div>
+
+        <div class="controls-anim">
+          <button id="btnPlay">▶ Play</button>
+          <button id="btnPrev">⟨ Passo</button>
+          <button id="btnNext">Passo ⟩</button>
+          <button id="btnReset">↺ Reset</button>
+          <label class="tiny" style="color:#bfe9cf">Velocidade</label>
+          <input id="speed" type="range" min="10" max="600" value="120" step="10">
+        </div>
+        <div class="note" id="note">Escolha um algoritmo e clique em Play.</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h2><span class="ball"></span> Pseudocódigo <span class="eyebrow" id="algName">Bubble Sort</span></h2>
+        <div id="pseudo" class="pseudo"></div>
+      </div>
+      <div class="panel didatica">
+        <h2><span class="ball"></span> Como funciona <span class="eyebrow">DIDÁTICA</span></h2>
+        <div class="ds" id="ds"></div>
+        <div id="explica"></div>
+        <table class="cx" id="cxTable"></table>
+      </div>
+    </div>
+
+    <div class="grid-2" style="grid-template-columns:1fr">
+      <div class="panel">
+        <h2><span class="ball"></span> Relatório comparativo — todos os algoritmos <span class="eyebrow">MESMO DATASET</span></h2>
+        <div class="rep-head">
+          <span class="ctl" style="background:#f0e7e0">
+            <label class="tiny" style="color:var(--muted)" for="repN">Tamanho</label>
+            <select id="repN"><option>10</option><option selected>50</option><option>100</option><option>500</option></select>
+          </span>
+          <button id="btnRep" class="dark">▶ Rodar os 6 e comparar</button>
+          <span class="ctl" style="background:#f0e7e0">
+            <label class="tiny" style="color:var(--muted)" for="repMetric">Gráfico</label>
+            <select id="repMetric"><option value="comp">Comparações</option><option value="swap">Trocas/mov.</option><option value="ms">Tempo (ms)</option></select>
+          </span>
+        </div>
+        <table class="rep" id="repTable"><tbody><tr><td style="color:var(--muted);padding:14px 8px">Clique em “Rodar os 6 e comparar” para gerar a tabela e o gráfico.</td></tr></tbody></table>
+        <div id="repChart" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const $=(id)=>document.getElementById(id);
+const toastEl=$("toast");
+function toast(m,e=false){toastEl.textContent=m;toastEl.className="toast show"+(e?" err":"");clearTimeout(toast._t);toast._t=setTimeout(()=>toastEl.className="toast",3000);}
+
+let dataset=[], base=[], events=[], ei=0, timer=null, t0=0, elapsed=0, heapSize=null;
+
+const KEY=()=>$("selKey").value;
+const ALG=()=>$("selAlg").value;
+
+// ---------------- dataset (reaproveita o cache da persistência, senão API)
+async function carregar(){
+  try{ const r=await fetch("/api/offline?formato=json"); const j=await r.json(); if(j.ok&&j.dados.length){dataset=j.dados;prep();return;} }catch(e){}
+  try{ const r=await fetch("/api/carregar?limite=151"); const j=await r.json(); if(j.ok){dataset=j.dados;prep();return;} }catch(e){}
+  $("note").textContent="Não foi possível carregar o dataset (offline e sem cache).";
+}
+function prep(){ embaralhar(); renderDidatica(); }
+
+function amostra(n){
+  // pega n pokémon e usa a chave numérica como valor
+  const arr=dataset.slice(0,n).map(p=>({v:Math.max(1,p[KEY()]||1), name:p.name, id:p.id}));
+  return arr;
+}
+function embaralhar(){
+  pararPlay();
+  base=amostra(parseInt($("selN").value,10));
+  for(let i=base.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[base[i],base[j]]=[base[j],base[i]];}
+  gerar();
+}
+function gerar(){
+  const A=base.map(x=>({...x}));
+  const ev=[]; const rec=(e)=>ev.push(e);
+  ALGOS[ALG()].gen(A, rec);
+  events=ev; ei=0; elapsed=0; heapSize=(ALG()==="heap"?base.length:null);
+  $("heapWrap").style.display = ALG()==="heap" ? "block" : "none";
+  resetCounters(); renderFrame(estadoInicial()); renderPseudo(-1);
+  $("note").textContent="Pronto. "+events.length+" passos. Clique em Play.";
+}
+
+function estadoInicial(){ return {arr:base.map(x=>({...x})), comp:0, swap:0, sorted:new Set(), heapSize:(ALG()==="heap"?base.length:null)}; }
+
+// ---------------- aplica eventos até o índice k -> estado para render
+function estadoEm(k){
+  const arr=base.map(x=>({...x})); const sorted=new Set(); let comp=0,swap=0,hs=(ALG()==="heap"?base.length:null);
+  let cmp=null,swp=null,pivot=null,line=-1,note="";
+  for(let s=0;s<=k && s<events.length;s++){
+    const e=events[s]; line=e.line!=null?e.line:line; if(e.note)note=e.note;
+    cmp=null;swp=null;
+    if(e.t==="compare"){comp++;cmp=[e.i,e.j];}
+    else if(e.t==="swap"){swap++;swp=[e.i,e.j];const t=arr[e.i];arr[e.i]=arr[e.j];arr[e.j]=t;}
+    else if(e.t==="set"){swap++;arr[e.i]={...e.val};swp=[e.i];}
+    else if(e.t==="pivot"){pivot=e.i;}
+    else if(e.t==="sorted"){sorted.add(e.i);}
+    else if(e.t==="heapsize"){hs=e.size;}
+  }
+  return {arr,comp,swap,sorted,cmp,swp,pivot,line,note,heapSize:hs};
+}
+
+// ---------------- render barras
+function renderFrame(st){
+  const maxV=Math.max(...base.map(x=>x.v),1);
+  $("bars").innerHTML=st.arr.map((x,i)=>{
+    let cls="bar";
+    if(st.sorted&&st.sorted.has(i))cls+=" done";
+    if(st.pivot===i)cls+=" pivot";
+    if(st.cmp&&(st.cmp[0]===i||st.cmp[1]===i))cls+=" cmp";
+    if(st.swp&&(st.swp[0]===i||st.swp[1]===i))cls+=" swp";
+    const h=Math.round((x.v/maxV)*100);
+    const lbl=base.length<=24?`<span>${x.v}</span>`:"";
+    return `<div class="${cls}" style="height:${h}%" title="${x.name}: ${x.v}">${lbl}</div>`;
+  }).join("");
+  $("cComp").textContent=st.comp; $("cSwap").textContent=st.swap;
+  if(st.note!==undefined)$("note").textContent=st.note||"";
+  if(ALG()==="heap") renderHeap(st);
+}
+
+// ---------------- árvore do heap
+function renderHeap(st){
+  const size = st.heapSize!=null?st.heapSize:st.arr.length;
+  const nodes=[]; for(let i=0;i<size;i++) nodes.push(i);
+  if(!nodes.length){$("heapTree").innerHTML="";return;}
+  const levels=Math.floor(Math.log2(size))+1;
+  const W=Math.max(360, size*26), H=levels*56+20, R=14;
+  const pos=(i)=>{const lv=Math.floor(Math.log2(i+1));const start=(1<<lv)-1;const cnt=(1<<lv);const idx=i-start;
+    return {x:(W*(idx+0.5))/cnt, y:24+lv*56};};
+  let edges="",circles="";
+  for(let i=0;i<size;i++){
+    const p=pos(i);
+    [2*i+1,2*i+2].forEach(c=>{if(c<size){const cp=pos(c);edges+=`<line x1="${p.x}" y1="${p.y}" x2="${cp.x}" y2="${cp.y}" stroke="#2c5a47" stroke-width="1.5"/>`;}});
+  }
+  for(let i=0;i<size;i++){
+    const p=pos(i); let fill="#173f30",stroke="#3a9b6e",tc="#cfeede";
+    if(st.cmp&&(st.cmp[0]===i||st.cmp[1]===i)){fill="#7a6310";stroke="#F4C13B";tc="#ffe8a8";}
+    if(st.swp&&(st.swp[0]===i||st.swp[1]===i)){fill="#7a1d1d";stroke="#ff6b6b";tc="#ffd5d5";}
+    circles+=`<circle cx="${p.x}" cy="${p.y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+      <text x="${p.x}" y="${p.y+4}" font-size="11" fill="${tc}" text-anchor="middle" font-family="JetBrains Mono">${st.arr[i].v}</text>`;
+  }
+  $("heapTree").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:230px">${edges}${circles}</svg>`;
+}
+
+// ---------------- pseudocódigo
+function renderPseudo(hot){
+  const lines=ALGOS[ALG()].pseudo;
+  $("pseudo").innerHTML=lines.map((l,i)=>`<div class="ln ${i+1===hot?'hot':''}"><span class="n">${i+1}</span><span>${l.replace(/</g,"&lt;")}</span></div>`).join("");
+}
+
+// ---------------- player
+function mostrar(k){ k=Math.max(0,Math.min(k,events.length-1)); ei=k; const st=estadoEm(k); renderFrame(st); renderPseudo(st.line); }
+function play(){
+  pararPlay(); $("btnPlay").textContent="⏸ Pause"; t0=performance.now()-elapsed;
+  timer=setInterval(()=>{
+    elapsed=performance.now()-t0; $("cTime").textContent=(elapsed/1000).toFixed(1)+"s";
+    if(ei>=events.length-1){ pararPlay(); $("note").textContent="✅ ordenação concluída"; return; }
+    mostrar(ei+1);
+  }, parseInt($("speed").value,10));
+}
+function pararPlay(){ if(timer){clearInterval(timer);timer=null;} $("btnPlay").textContent="▶ Play"; }
+function resetCounters(){ $("cComp").textContent=0;$("cSwap").textContent=0;$("cTime").textContent="0.0s"; }
+
+// ---------------- relatório comparativo (conta de verdade, sem gravar passos)
+function rodarRelatorio(){
+  const n=parseInt($("repN").value,10);
+  const A0=amostra(n);
+  // embaralha igual para todos
+  for(let i=A0.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[A0[i],A0[j]]=[A0[j],A0[i]];}
+  const reps = n<=50?800 : n<=100?200 : 30;
+  const linhas=[];
+  for(const key of ["bubble","selection","insertion","merge","quick","heap"]){
+    let comp=0,sw=0;
+    // contagem (1 execução)
+    const Ac=A0.map(x=>({...x})); const r=ALGOS[key].gen(Ac,null,true); comp=r.comp; sw=r.sw;
+    // tempo médio (várias execuções)
+    const t0=performance.now();
+    for(let k=0;k<reps;k++){ const At=A0.map(x=>({...x})); ALGOS[key].gen(At,null,true); }
+    const ms=(performance.now()-t0)/reps;
+    linhas.push({key,nome:ALGOS[key].nome,comp,sw,ms,cx:ALGOS[key].cxClasse});
+  }
+  renderRelatorio(linhas,n);
+}
+function renderRelatorio(linhas,n){
+  const min=(f)=>Math.min(...linhas.map(f));
+  const mComp=min(l=>l.comp),mSwap=min(l=>l.sw),mMs=min(l=>l.ms);
+  $("repTable").innerHTML=`<thead><tr><th>Algoritmo</th><th>Comparações</th><th>Trocas/mov.</th><th>Tempo (ms)</th><th style="text-align:left">Complexidade (mel./méd./pior)</th></tr></thead><tbody>`+
+    linhas.map(l=>{
+      const tag=l.cx==="nlogn"?'<span class="cxtag cx-nlogn">O(n log n)</span>':'<span class="cxtag cx-n2">O(n²)</span>';
+      return `<tr><td class="alg">${l.nome}</td>
+        <td class="mono ${l.comp===mComp?'best':''}">${l.comp.toLocaleString('pt-BR')}</td>
+        <td class="mono ${l.sw===mSwap?'best':''}">${l.sw.toLocaleString('pt-BR')}</td>
+        <td class="mono ${l.ms===mMs?'best':''}">${l.ms.toFixed(3)}</td>
+        <td style="text-align:left">${ALGOS[l.key].cxCurto} ${tag}</td></tr>`;
+    }).join("")+`</tbody>`;
+  window._rep=linhas; renderRepChart();
+}
+function renderRepChart(){
+  const linhas=window._rep; if(!linhas)return;
+  const metric=$("repMetric").value;
+  const val=(l)=>metric==="comp"?l.comp:metric==="swap"?l.sw:l.ms;
+  const max=Math.max(...linhas.map(val),1);
+  const W=560,H=210,pad=90,bw=(H-20)/linhas.length;
+  let bars="";
+  linhas.forEach((l,i)=>{
+    const y=10+i*bw; const w=(val(l)/max)*(W-pad-60);
+    const col=l.cx==="nlogn"?"#2f9e57":"#d9893a";
+    bars+=`<text x="${pad-6}" y="${y+bw/2}" font-size="11" fill="#444" text-anchor="end" font-family="Inter">${l.nome.replace(' Sort','')}</text>
+      <rect x="${pad}" y="${y+4}" width="${Math.max(2,w)}" height="${bw-12}" rx="3" fill="${col}"/>
+      <text x="${pad+Math.max(2,w)+5}" y="${y+bw/2+1}" font-size="11" fill="#333" font-family="JetBrains Mono">${metric==="ms"?val(l).toFixed(3):val(l).toLocaleString('pt-BR')}</text>`;
+  });
+  $("repChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="background:#fff;border:1px solid #e3e3e3;border-radius:10px">${bars}</svg>`;
+}
+
+// ---------------- didática
+function renderDidatica(){
+  const a=ALGOS[ALG()];
+  $("algName").textContent=a.nome; $("ds").textContent="Estrutura: "+a.estrutura;
+  $("explica").innerHTML=a.como.map(p=>`<p>${p}</p>`).join("");
+  $("cxTable").innerHTML=`<tr><th>Melhor</th><th>Médio</th><th>Pior</th><th>Espaço</th></tr>
+    <tr class="mono"><td>${a.cx.melhor}</td><td>${a.cx.medio}</td><td>${a.cx.pior}</td><td>${a.cx.espaco}</td></tr>
+    <tr><td colspan="4" class="just">${a.cx.justificativa}</td></tr>`;
+}
+
+// ====================================================================
+//  IMPLEMENTAÇÃO MANUAL DOS 6 ALGORITMOS (gen grava passos; rec=null só conta)
+// ====================================================================
+function mk(nome,estrutura,como,pseudo,cx,cxClasse,cxCurto,gen){return {nome,estrutura,como,pseudo,cx,cxClasse,cxCurto,gen};}
+const ALGOS={
+  bubble: mk("Bubble Sort","array (vetor simples)",
+    ["Compara pares vizinhos e troca quando estão fora de ordem. A cada passagem completa, o maior elemento restante “borbulha” para o final.",
+     "Repete passagens até nenhuma troca ser necessária. É simples e estável, mas faz muitas comparações e trocas."],
+    ["para i de 0 até n-2:","  para j de 0 até n-2-i:","    se A[j] > A[j+1]:","      trocar A[j] e A[j+1]"],
+    {melhor:"O(n)",medio:"O(n²)",pior:"O(n²)",espaco:"O(1)",justificativa:"O(n²) pois há dois laços encaixados sobre os n elementos; no melhor caso (já ordenado) uma passagem sem trocas dá O(n)."},
+    "n2","O(n²) / O(n²)",
+    function(A,rec,count){let n=A.length,comp=0,sw=0;
+      for(let i=0;i<n-1;i++){for(let j=0;j<n-1-i;j++){comp++;rec&&rec({t:"compare",i:j,j:j+1,line:3,note:`compara ${A[j].v} e ${A[j+1].v}`});
+        if(A[j].v>A[j+1].v){sw++;rec&&rec({t:"swap",i:j,j:j+1,line:4,note:`troca ${A[j].v} ↔ ${A[j+1].v}`});const t=A[j];A[j]=A[j+1];A[j+1]=t;}}
+        rec&&rec({t:"sorted",i:n-1-i});}
+      rec&&rec({t:"sorted",i:0}); return {comp,sw};}),
+
+  selection: mk("Selection Sort","array (vetor simples)",
+    ["Procura o menor elemento da parte não ordenada e o coloca na posição correta, uma de cada vez.",
+     "Faz sempre ~n²/2 comparações, mas no máximo n-1 trocas — útil quando trocar custa caro."],
+    ["para i de 0 até n-1:","  min ← i","  para j de i+1 até n-1:","    se A[j] < A[min]: min ← j","  trocar A[i] e A[min]"],
+    {melhor:"O(n²)",medio:"O(n²)",pior:"O(n²)",espaco:"O(1)",justificativa:"Sempre varre o restante do vetor para achar o mínimo (dois laços), então é O(n²) em todos os casos; o número de trocas, porém, é apenas O(n)."},
+    "n2","O(n²) / O(n²)",
+    function(A,rec,count){let n=A.length,comp=0,sw=0;
+      for(let i=0;i<n;i++){let m=i;for(let j=i+1;j<n;j++){comp++;rec&&rec({t:"compare",i:j,j:m,line:4,note:`procura mínimo: ${A[j].v} vs ${A[m].v}`});if(A[j].v<A[m].v)m=j;}
+        if(m!==i){sw++;rec&&rec({t:"swap",i:i,j:m,line:5,note:`coloca ${A[m].v} na posição ${i}`});const t=A[i];A[i]=A[m];A[m]=t;}
+        rec&&rec({t:"sorted",i:i});} return {comp,sw};}),
+
+  insertion: mk("Insertion Sort","array (vetor simples)",
+    ["Constrói a parte ordenada item a item: pega o próximo elemento e o “insere” deslizando para trás até achar seu lugar.",
+     "Muito eficiente em listas quase ordenadas (chega a O(n)); por isso é usado em sub-listas de algoritmos híbridos."],
+    ["para i de 1 até n-1:","  chave ← A[i] ; j ← i-1","  enquanto j≥0 e A[j] > chave:","    A[j+1] ← A[j] ; j ← j-1","  A[j+1] ← chave"],
+    {melhor:"O(n)",medio:"O(n²)",pior:"O(n²)",espaco:"O(1)",justificativa:"No pior caso (invertido) cada elemento desloca todos os anteriores → O(n²); se já está quase ordenado, o laço interno quase não roda → O(n)."},
+    "n2","O(n) / O(n²)",
+    function(A,rec,count){let n=A.length,comp=0,sw=0;
+      for(let i=1;i<n;i++){const key={...A[i]};let j=i-1;
+        while(j>=0){comp++;rec&&rec({t:"compare",i:j,j:i,line:3,note:`compara ${A[j].v} com a chave ${key.v}`});if(A[j].v>key.v){sw++;A[j+1]=A[j];rec&&rec({t:"set",i:j+1,val:A[j+1],line:4,note:`desloca ${A[j+1].v}`});j--;}else break;}
+        A[j+1]=key;sw++;rec&&rec({t:"set",i:j+1,val:key,line:5,note:`insere ${key.v} na posição ${j+1}`});}
+      for(let k=0;k<n;k++)rec&&rec({t:"sorted",i:k}); return {comp,sw};}),
+
+  merge: mk("Merge Sort","array + vetores auxiliares (divisão e conquista)",
+    ["Divide o vetor ao meio recursivamente até sobrarem pedaços de 1 elemento, depois intercala (merge) os pedaços já ordenados em ordem.",
+     "A intercalação usa um vetor auxiliar. É estável e garante O(n log n) sempre, ao custo de O(n) de memória extra."],
+    ["mergeSort(lo, hi):","  se lo ≥ hi: retorna","  meio ← (lo+hi)/2","  mergeSort(lo, meio)","  mergeSort(meio+1, hi)","  // intercalar: comparar os dois lados","  // copiar o menor de volta ao vetor"],
+    {melhor:"O(n log n)",medio:"O(n log n)",pior:"O(n log n)",espaco:"O(n)",justificativa:"São log n níveis de divisão e cada nível intercala n elementos → n·log n, independente da entrada. Usa O(n) de vetor auxiliar."},
+    "nlogn","O(n log n) sempre",
+    function(A,rec,count){let comp=0,sw=0;const n=A.length;const aux=new Array(n);
+      function ms(lo,hi){if(lo>=hi)return;const mid=(lo+hi)>>1;ms(lo,mid);ms(mid+1,hi);
+        for(let k=lo;k<=hi;k++)aux[k]={...A[k]};let i=lo,j=mid+1;
+        for(let k=lo;k<=hi;k++){
+          if(i>mid){A[k]=aux[j++];sw++;rec&&rec({t:"set",i:k,val:A[k],line:7,note:`copia ${A[k].v}`});}
+          else if(j>hi){A[k]=aux[i++];sw++;rec&&rec({t:"set",i:k,val:A[k],line:7,note:`copia ${A[k].v}`});}
+          else{comp++;rec&&rec({t:"compare",i:i,j:j,line:6,note:`intercala: ${aux[i].v} vs ${aux[j].v}`});
+            if(aux[i].v<=aux[j].v){A[k]=aux[i++];sw++;rec&&rec({t:"set",i:k,val:A[k],line:7});}
+            else{A[k]=aux[j++];sw++;rec&&rec({t:"set",i:k,val:A[k],line:7});}}}}
+      ms(0,n-1);for(let k=0;k<n;k++)rec&&rec({t:"sorted",i:k}); return {comp,sw};}),
+
+  quick: mk("Quick Sort","array (divisão e conquista, partição in-place)",
+    ["Escolhe um pivô (aqui, o último elemento), particiona o vetor em “menores que o pivô” e “maiores”, e ordena cada lado recursivamente.",
+     "É rápido na média e ordena no próprio vetor (O(1) extra de dados). No pior caso (pivô sempre ruim) degrada para O(n²)."],
+    ["quickSort(lo, hi):","  pivô ← A[hi]","  para j de lo até hi-1: se A[j] ≤ pivô:","    i++ ; trocar A[i] e A[j]","  trocar A[i+1] e A[hi]  // pivô ao centro"],
+    {melhor:"O(n log n)",medio:"O(n log n)",pior:"O(n²)",espaco:"O(log n)",justificativa:"Partições balanceadas dão log n níveis × n = n log n. Se o pivô é sempre o extremo (vetor já ordenado), as partições ficam desbalanceadas → O(n²)."},
+    "nlogn","O(n log n) / O(n²)",
+    function(A,rec,count){let comp=0,sw=0;
+      function part(lo,hi){const piv=A[hi].v;rec&&rec({t:"pivot",i:hi,line:2,note:`pivô = ${piv}`});let i=lo-1;
+        for(let j=lo;j<hi;j++){comp++;rec&&rec({t:"compare",i:j,j:hi,line:3,note:`${A[j].v} ≤ pivô ${piv}?`});
+          if(A[j].v<=piv){i++;if(i!==j){sw++;rec&&rec({t:"swap",i:i,j:j,line:4,note:`troca ${A[i].v} ↔ ${A[j].v}`});const t=A[i];A[i]=A[j];A[j]=t;}}}
+        sw++;rec&&rec({t:"swap",i:i+1,j:hi,line:5,note:`pivô para a posição ${i+1}`});const t=A[i+1];A[i+1]=A[hi];A[hi]=t;return i+1;}
+      function qs(lo,hi){if(lo<hi){const p=part(lo,hi);rec&&rec({t:"sorted",i:p});qs(lo,p-1);qs(p+1,hi);}else if(lo===hi){rec&&rec({t:"sorted",i:lo});}}
+      qs(0,A.length-1); return {comp,sw};}),
+
+  heap: mk("Heap Sort","heap binário (árvore representada em array)",
+    ["Transforma o vetor num max-heap (todo pai ≥ filhos), onde o maior elemento fica na raiz. A árvore é guardada no próprio array: filhos de i são 2i+1 e 2i+2.",
+     "Repetidamente troca a raiz (maior) com o último, reduz o heap e “heapifica” a raiz para restaurar a propriedade. Ordena in-place em O(n log n) garantido."],
+    ["construir max-heap (heapify de n/2-1 até 0)","para i de n-1 até 1:","  trocar A[0] e A[i]  // maior vai ao fim","  size-- ; heapify(0)","heapify: descer trocando com o maior filho"],
+    {melhor:"O(n log n)",medio:"O(n log n)",pior:"O(n log n)",espaco:"O(1)",justificativa:"Cada heapify custa O(log n) (altura da árvore) e é feito O(n) vezes → n log n, sem variação relevante e sem memória extra."},
+    "nlogn","O(n log n) sempre",
+    function(A,rec,count){let comp=0,sw=0;const n=A.length;let size=n;
+      function heapify(i){while(true){let l=2*i+1,r=2*i+2,big=i;
+        if(l<size){comp++;rec&&rec({t:"compare",i:l,j:big,line:5,note:`filho ${A[l].v} vs pai ${A[big].v}`});if(A[l].v>A[big].v)big=l;}
+        if(r<size){comp++;rec&&rec({t:"compare",i:r,j:big,line:5,note:`filho ${A[r].v} vs ${A[big].v}`});if(A[r].v>A[big].v)big=r;}
+        if(big!==i){sw++;rec&&rec({t:"swap",i:i,j:big,line:5,note:`desce: troca ${A[i].v} ↔ ${A[big].v}`});const t=A[i];A[i]=A[big];A[big]=t;i=big;}else break;}}
+      for(let i=Math.floor(n/2)-1;i>=0;i--)heapify(i);
+      for(let i=n-1;i>0;i--){sw++;rec&&rec({t:"swap",i:0,j:i,line:3,note:`maior (${A[0].v}) vai para o fim`});const t=A[0];A[0]=A[i];A[i]=t;
+        rec&&rec({t:"sorted",i:i});size--;rec&&rec({t:"heapsize",size:size});heapify(0);}
+      rec&&rec({t:"sorted",i:0}); return {comp,sw};}),
+};
+
+// ---------------- eventos de UI
+$("selAlg").onchange=()=>{renderDidatica();gerar();};
+$("selKey").onchange=embaralhar;
+$("selN").onchange=embaralhar;
+$("btnShuffle").onclick=embaralhar;
+$("btnPlay").onclick=()=>{ if(timer)pararPlay(); else { if(ei>=events.length-1){ei=0;elapsed=0;} play(); } };
+$("btnNext").onclick=()=>{pararPlay();mostrar(ei+1);};
+$("btnPrev").onclick=()=>{pararPlay();mostrar(ei-1);};
+$("btnReset").onclick=()=>{pararPlay();elapsed=0;ei=0;resetCounters();mostrar(0);};
+$("speed").oninput=()=>{ if(timer)play(); };
+$("btnRep").onclick=()=>{ toast("Rodando os 6 algoritmos…"); setTimeout(rodarRelatorio,30); };
+$("repMetric").onchange=renderRepChart;
+
+renderDidatica();
+carregar();
+</script>
+</body>
+</html>
