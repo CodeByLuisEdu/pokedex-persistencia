@@ -48,6 +48,42 @@ def ordenacao():
     return send_from_directory(BASE_DIR, "ordenacao.html")
 
 
+@app.route("/arvore")
+def arvore():
+    return send_from_directory(BASE_DIR, "arvore.html")
+
+
+# ----------------------------------------------------------------------------
+# GET /api/evolucao?pokemon=eevee
+# Busca a cadeia de evolução na PokéAPI e devolve como árvore aninhada.
+# ----------------------------------------------------------------------------
+def _id_da_url(url):
+    return int(url.rstrip("/").split("/")[-1])
+
+
+def _montar_arvore(no):
+    return {
+        "name": no["species"]["name"],
+        "id": _id_da_url(no["species"]["url"]),
+        "children": [_montar_arvore(c) for c in no.get("evolves_to", [])],
+    }
+
+
+@app.route("/api/evolucao")
+def evolucao():
+    nome = request.args.get("pokemon", "eevee").strip().lower()
+    try:
+        session = requests.Session()
+        sp = session.get(f"{POKEAPI}/pokemon-species/{nome}", timeout=15)
+        if sp.status_code != 200:
+            return jsonify({"ok": False, "erro": f"Pokémon '{nome}' não encontrado."}), 404
+        chain_url = sp.json()["evolution_chain"]["url"]
+        chain = session.get(chain_url, timeout=15).json()
+        return jsonify({"ok": True, "tree": _montar_arvore(chain["chain"])})
+    except requests.RequestException as e:
+        return jsonify({"ok": False, "erro": f"Falha na PokéAPI: {e}"}), 502
+
+
 # ----------------------------------------------------------------------------
 # GET /api/carregar?limite=151
 # Baixa da PokéAPI e devolve o dataset já simplificado (NÃO salva ainda).

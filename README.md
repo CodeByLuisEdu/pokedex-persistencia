@@ -137,6 +137,31 @@ GET /ordenacao  -> página dos algoritmos de ordenação (reaproveita o dataset)
 
 ---
 
+## 🌳 Seção de Árvore (estrutura interativa)
+
+A página **`/arvore`** organiza dados reais (cadeia de evolução da PokéAPI) como
+uma **árvore n-ária** e permite manipulá-la localmente:
+
+- **Render visual** da árvore (cada nó é um Pokémon; filhos = evoluções diretas;
+  Eevee tem 8 filhos, mostrando bem a ramificação).
+- **Caminhamentos animados**: pré-ordem, em-ordem (generalização n-ária) e pós-ordem,
+  numerando a ordem de visitação nó a nó.
+- **Busca (BFS)** que destaca o nó encontrado e mostra o **caminho da raiz** até ele.
+- **Inserção local**: seleciona um nó e adiciona um filho com nome próprio.
+- **Exclusão local íntegra**: ao remover um nó interno, seus filhos são **promovidos
+  ao pai** — nenhum ponteiro fica solto.
+- **Métricas em tempo real**: **altura** da árvore e **grau** (e profundidade) do nó
+  ao selecionar/passar o mouse.
+- Endpoint `GET /api/evolucao?pokemon=eevee` busca a cadeia real; há árvores de
+  exemplo embutidas para funcionar mesmo offline.
+
+```
+GET /arvore          -> página da árvore de evolução
+GET /api/evolucao    -> cadeia de evolução (PokéAPI) como árvore aninhada
+```
+
+---
+
 ## 🏗️ Arquitetura
 
 ```
@@ -162,6 +187,7 @@ pokedex-persistencia/
 ├── index.html         # tela de dados/persistência (ordenação, busca, offline, comparação)
 ├── busca.html         # tela de algoritmos de busca (linear/binária animadas + gráfico)
 ├── ordenacao.html     # tela de algoritmos de ordenação (6 algoritmos + relatório)
+├── arvore.html        # tela da árvore de evolução (traversals, busca, inserção/exclusão)
 ├── dados/             # cache em disco (gerado em runtime; ignorado no git)
 ├── requirements.txt
 └── README.md

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pokédex · Árvore de Evolução</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#D7282F;--red-lo:#9E1B22;--red-hi:#E8474D;--red-edge:#7A1318;
+    --screen:#0E2E22;--screen-lo:#0A2018;--lcd:#7CFCB0;--lcd-dim:#3f7a5c;
+    --tile:#F4F6F4;--tile-line:#cfd6cf;--ink:#15201A;--muted:#5d6b63;
+    --blue:#39B3F2;--blue-lo:#0A6FB0;--amber:#F4C13B;--green:#46d17a;
+    --term-bg:#0c1410;
+    --node:#1d4a39;--node-line:#3a9b6e;--sel:#F4C13B;--visit:#39B3F2;--path:#ff8fa3;--found:#46d17a;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);font-family:"Inter",system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(circle at 12% 18%,rgba(255,255,255,.5),transparent 40%),
+      repeating-linear-gradient(0deg,#e2e5e8 0 1px,transparent 1px 22px),
+      repeating-linear-gradient(90deg,#e2e5e8 0 1px,transparent 1px 22px),#eceef1}
+  .stage{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+  .pokedex{background:linear-gradient(168deg,var(--red-hi),var(--red) 38%,var(--red-lo));border-radius:24px;padding:0 0 18px;border:1px solid var(--red-edge);overflow:hidden;
+    box-shadow:0 2px 0 rgba(255,255,255,.35) inset,0 -6px 0 var(--red-edge) inset,0 26px 50px -26px rgba(120,10,15,.7)}
+  .lid{display:flex;align-items:center;gap:16px;padding:18px 22px 16px;border-bottom:5px solid var(--red-edge);background:linear-gradient(180deg,rgba(255,255,255,.12),transparent)}
+  .lens{width:60px;height:60px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle at 34% 30%,#d8f4ff 0 6%,var(--blue) 36%,var(--blue-lo) 80%);box-shadow:0 0 0 5px #fff,0 0 0 9px var(--red-edge),0 0 22px 3px rgba(70,180,255,.55)}
+  .lens::before{content:"";position:absolute;top:10px;left:14px;width:16px;height:11px;background:rgba(255,255,255,.85);border-radius:50%;transform:rotate(-25deg)}
+  .brand{margin-left:auto;text-align:right;color:#fff}
+  .brand h1{font-family:"Space Grotesk",sans-serif;font-weight:700;margin:0;font-size:clamp(19px,3vw,27px);letter-spacing:-.02em;text-shadow:0 2px 0 var(--red-edge)}
+  .brand p{margin:1px 0 0;font-size:12px;opacity:.92}
+  nav{margin-top:7px;display:flex;gap:7px;justify-content:flex-end;flex-wrap:wrap}
+  nav a{font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;text-decoration:none}
+  nav a.off{color:var(--red-lo);background:#fff} nav a.on{color:#fff;background:rgba(0,0,0,.22)}
+
+  .deck{padding:16px 22px 4px;display:flex;flex-direction:column;gap:11px}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .ctl{display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.13);padding:6px 9px;border-radius:12px}
+  label.tiny{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#ffd9da;font-weight:700}
+  button,select,input{font-family:inherit;font-size:14px}
+  button{border:1px solid rgba(0,0,0,.18);background:#fff;color:var(--ink);padding:9px 13px;border-radius:11px;cursor:pointer;font-weight:600;box-shadow:0 2px 0 rgba(0,0,0,.18);transition:transform .05s,box-shadow .05s,background .15s}
+  button:hover{background:#f4f4f4} button:active{transform:translateY(2px);box-shadow:none} button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  button.primary{background:#fff;color:var(--red-lo)} button.dark{background:#241016;color:#fff;border-color:#000} button.blue{background:#103a55;color:#fff;border-color:#000}
+  select,input{border:1px solid rgba(0,0,0,.2);background:#fff;padding:9px 11px;border-radius:11px;color:var(--ink);box-shadow:0 2px 0 rgba(0,0,0,.12)}
+  input{min-width:120px}
+  :focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  .trav button{background:#103a55;color:#fff;border-color:#000}
+
+  .screen-frame{margin:12px 18px 0;border-radius:16px;padding:10px;background:linear-gradient(180deg,#7c1418,#5e0f13);box-shadow:0 3px 0 rgba(255,255,255,.12) inset,0 -3px 8px rgba(0,0,0,.3) inset}
+  .screen{background:linear-gradient(180deg,var(--screen),var(--screen-lo));border-radius:11px;padding:12px;border:1px solid #062018;box-shadow:0 0 0 2px #0c3a2b inset,0 10px 24px -12px rgba(0,0,0,.7) inset}
+  .statusbar{display:flex;align-items:center;gap:14px;font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--lcd);margin-bottom:8px;text-shadow:0 0 6px rgba(124,252,176,.4);flex-wrap:wrap}
+  .statusbar b{color:#eafff1}
+  .legend{display:flex;gap:12px;font-size:11px;color:#bfe9cf;margin-left:auto;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  .treebox{overflow:auto;max-height:430px}
+  svg text{font-family:"Inter",sans-serif}
+  .node-card{cursor:pointer}
+  .note{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--lcd);text-align:center;margin-top:8px;min-height:18px}
+  .order{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:8px}
+  .order .ch{background:rgba(57,179,242,.14);border:1px solid #2c6f93;color:#bfe9ff;font-size:11px;font-family:"JetBrains Mono",monospace;padding:2px 7px;border-radius:6px;text-transform:capitalize}
+  .order .ch b{color:#fff}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 18px 0}
+  @media(max-width:880px){.grid-2{grid-template-columns:1fr}}
+  .panel{background:#fbf4f0;border:1px solid rgba(0,0,0,.12);border-radius:14px;padding:14px;box-shadow:0 1px 0 #fff inset,0 8px 20px -16px rgba(0,0,0,.5)}
+  .panel>h2{font-family:"Space Grotesk",sans-serif;font-size:13.5px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .ball{width:16px;height:16px;border-radius:50%;flex:none;background:linear-gradient(180deg,var(--red) 0 50%,#fff 50% 100%);border:1.5px solid #20100f;position:relative}
+  .ball::after{content:"";position:absolute;inset:0;margin:auto;width:5px;height:5px;border-radius:50%;background:#fff;border:1.5px solid #20100f}
+  .eyebrow{margin-left:auto;font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--red-lo);border:1px solid var(--red);border-radius:5px;padding:1px 6px}
+
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .metric{background:#fff;border:1px solid var(--tile-line);border-radius:11px;padding:11px;text-align:center}
+  .metric .big{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:700;color:var(--red-lo);line-height:1}
+  .metric .lbl{font-size:11px;color:var(--muted);margin-top:4px;font-weight:600}
+  .selinfo{margin-top:10px;font-size:13px;background:#fff;border:1px solid var(--tile-line);border-radius:10px;padding:10px}
+  .selinfo b{text-transform:capitalize}
+  .opbtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+  .path{margin-top:10px;font-size:12.5px;color:var(--muted);font-family:"JetBrains Mono",monospace}
+  .path .seg{color:var(--red-lo);font-weight:700;text-transform:capitalize}
+  .help{font-size:12.5px;color:#3a3f47}
+  .help p{margin:0 0 7px} .help code{background:#efe7e0;padding:1px 5px;border-radius:5px;font-size:12px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#241016;color:#fff;padding:11px 16px;border-radius:11px;font-size:13px;opacity:0;pointer-events:none;transition:all .25s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)} .toast.err{background:#8b1418}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="pokedex">
+    <div class="lid">
+      <span class="lens" aria-hidden="true"></span>
+      <div class="brand">
+        <h1>Pokédex · Árvore</h1>
+        <p>Cadeia de evolução como estrutura de árvore</p>
+        <nav>
+          <a href="/" class="off">📦 Dados</a>
+          <a href="/busca" class="off">🔍 Busca</a>
+          <a href="/ordenacao" class="off">🔀 Ordenação</a>
+          <a href="/arvore" class="on">🌳 Árvore</a>
+        </nav>
+      </div>
+    </div>
+
+    <div class="deck">
+      <div class="row">
+        <span class="ctl">
+          <label class="tiny" for="selChain">Cadeia</label>
+          <select id="selChain">
+            <option value="eevee">Eevee (ramificada)</option>
+            <option value="bulbasaur">Bulbasaur</option>
+            <option value="charmander">Charmander</option>
+            <option value="poliwag">Poliwag (ramificada)</option>
+            <option value="caterpie">Caterpie</option>
+          </select>
+        </span>
+        <button id="btnApi" class="primary">⬇️ Carregar da API</button>
+        <button id="btnReset" class="dark">↺ Restaurar árvore</button>
+        <span class="trav row" style="gap:7px">
+          <label class="tiny">Caminhamento</label>
+          <button data-t="pre">Pré-ordem</button>
+          <button data-t="in">Em-ordem</button>
+          <button data-t="post">Pós-ordem</button>
+        </span>
+      </div>
+      <div class="row">
+        <span class="ctl">
+          <label class="tiny" for="busca">Buscar</label>
+          <input id="busca" placeholder="nome do nó (ex.: umbreon)" />
+          <button id="btnBuscar" class="blue">🔎 BFS</button>
+        </span>
+        <span style="color:#ffd9da;font-size:12px;font-weight:600">clique num nó para selecionar · passe o mouse para ver o grau</span>
+      </div>
+    </div>
+
+    <div class="screen-frame">
+      <div class="screen">
+        <div class="statusbar">
+          <span>raiz: <b id="sRoot">—</b></span>
+          <span>nós: <b id="sCount">0</b></span>
+          <span>altura: <b id="sHeight">0</b></span>
+          <span class="legend">
+            <span><i style="background:var(--sel)"></i>selecionado</span>
+            <span><i style="background:var(--visit)"></i>visita</span>
+            <span><i style="background:var(--path)"></i>caminho</span>
+            <span><i style="background:var(--found)"></i>encontrado</span>
+          </span>
+        </div>
+        <div class="treebox"><div id="tree"></div></div>
+        <div class="order" id="order"></div>
+        <div class="note" id="note">Selecione um nó ou rode um caminhamento.</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- métricas + operações -->
+      <div class="panel">
+        <h2><span class="ball"></span> Métricas & Operações <span class="eyebrow">LOCAL</span></h2>
+        <div class="metrics">
+          <div class="metric"><div class="big" id="mHeight">0</div><div class="lbl">ALTURA DA ÁRVORE</div></div>
+          <div class="metric"><div class="big" id="mDegree">–</div><div class="lbl">GRAU DO NÓ SELECIONADO</div></div>
+        </div>
+        <div class="selinfo" id="selinfo">Nenhum nó selecionado. Clique num nó da árvore.</div>
+        <div class="opbtns">
+          <input id="novoNome" placeholder="nome do novo nó" style="flex:1">
+          <button id="btnInserir" class="primary" disabled>＋ Inserir filho</button>
+          <button id="btnExcluir" class="dark" disabled>🗑 Excluir nó</button>
+        </div>
+        <div class="path" id="pathBox"></div>
+      </div>
+
+      <!-- explicação didática -->
+      <div class="panel help">
+        <h2><span class="ball"></span> Como funciona <span class="eyebrow">DIDÁTICA</span></h2>
+        <p><b>Estrutura:</b> árvore n-ária. Cada nó é um Pokémon e seus filhos são as
+        evoluções diretas (a cadeia da PokéAPI). Eevee, por exemplo, tem 8 filhos.</p>
+        <p><b>Pré-ordem:</b> visita o nó e depois os filhos (raiz → esquerda → direita).
+        <b>Pós-ordem:</b> visita os filhos e por último o nó. <b>Em-ordem</b> em árvore
+        n-ária é uma generalização do caso binário: <code>1º filho → nó → demais filhos</code>.</p>
+        <p><b>Busca (BFS):</b> percorre por níveis a partir da raiz e destaca o nó achado,
+        mostrando o <b>caminho</b> da raiz até ele.</p>
+        <p><b>Exclusão íntegra:</b> ao remover um nó interno, os filhos dele são
+        <b>promovidos</b> ao pai — nenhum ponteiro fica solto e nenhum ramo se perde.</p>
+        <p><b>Altura</b> = nº de níveis. <b>Grau</b> de um nó = nº de filhos diretos.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const $=(id)=>document.getElementById(id);
+const toastEl=$("toast");
+function toast(m,e=false){toastEl.textContent=m;toastEl.className="toast show"+(e?" err":"");clearTimeout(toast._t);toast._t=setTimeout(()=>toastEl.className="toast",3000);}
+
+// ---------------- árvores de exemplo (offline-safe) ----------------
+const SAMPLES={
+  eevee:{name:"eevee",id:133,children:[
+    {name:"vaporeon",id:134,children:[]},{name:"jolteon",id:135,children:[]},
+    {name:"flareon",id:136,children:[]},{name:"espeon",id:196,children:[]},
+    {name:"umbreon",id:197,children:[]},{name:"leafeon",id:470,children:[]},
+    {name:"glaceon",id:471,children:[]},{name:"sylveon",id:700,children:[]}]},
+  bulbasaur:{name:"bulbasaur",id:1,children:[{name:"ivysaur",id:2,children:[{name:"venusaur",id:3,children:[]}]}]},
+  charmander:{name:"charmander",id:4,children:[{name:"charmeleon",id:5,children:[{name:"charizard",id:6,children:[]}]}]},
+  poliwag:{name:"poliwag",id:60,children:[{name:"poliwhirl",id:61,children:[
+    {name:"poliwrath",id:62,children:[]},{name:"politoed",id:186,children:[]}]}]},
+  caterpie:{name:"caterpie",id:10,children:[{name:"metapod",id:11,children:[{name:"butterfree",id:12,children:[]}]}]},
+};
+
+let root=null, uid=0, selected=null, timer=null;
+
+// dá uid a cada nó e ponteiro para o pai (integridade de referências)
+function indexar(node,parent=null){ node._uid=uid++; node._parent=parent; node.children.forEach(c=>indexar(c,node)); }
+function carregarArvore(tree){ uid=0; root=JSON.parse(JSON.stringify(tree)); indexar(root); selected=null; render(); atualizarMetricas(); $("order").innerHTML=""; $("pathBox").innerHTML=""; $("note").textContent="Árvore carregada."; }
+
+// ---------------- métricas ----------------
+function altura(node){ if(!node.children.length) return 1; return 1+Math.max(...node.children.map(altura)); }
+function contar(node){ return 1+node.children.reduce((s,c)=>s+contar(c),0); }
+function profundidade(node){ let d=0,n=node; while(n._parent){d++;n=n._parent;} return d; }
+function atualizarMetricas(){
+  $("sRoot").textContent=root?root.name:"—"; $("sCount").textContent=root?contar(root):0;
+  const h=root?altura(root):0; $("sHeight").textContent=h; $("mHeight").textContent=h;
+  $("mDegree").textContent = selected? selected.children.length : "–";
+}
+
+// ---------------- layout ----------------
+const NW=78,NH=34,XGAP=20,YGAP=82;
+function layout(){
+  let leaf=0;
+  (function pos(n,depth){
+    n._depth=depth;
+    if(!n.children.length){ n._x=leaf++; }
+    else { n.children.forEach(c=>pos(c,depth+1)); n._x=(n.children[0]._x+n.children[n.children.length-1]._x)/2; }
+  })(root,0);
+  const leaves=leaf;
+  const W=Math.max(360, leaves*(NW+XGAP)+40);
+  const H=(altura(root))*YGAP+30;
+  return {W,H};
+}
+function px(n,W,leaves){ return 20 + n._x*(NW+XGAP) + NW/2; }
+
+// ---------------- render ----------------
+let highlight={visit:new Set(),path:new Set(),found:null};
+function render(){
+  if(!root){return;}
+  const {W,H}=layout();
+  let edges="",nodes="";
+  (function walk(n){
+    const x=20+n._x*(NW+XGAP)+NW/2, y=20+n._depth*YGAP;
+    n.children.forEach(c=>{
+      const cx=20+c._x*(NW+XGAP)+NW/2, cy=20+c._depth*YGAP;
+      const onPath=highlight.path.has(n._uid)&&highlight.path.has(c._uid);
+      edges+=`<path d="M${x} ${y+NH} C ${x} ${y+NH+26}, ${cx} ${cy-26}, ${cx} ${cy}" fill="none" stroke="${onPath?'#ff8fa3':'#2c5a47'}" stroke-width="${onPath?3:1.6}"/>`;
+    });
+    walk._all=walk._all||[]; walk._all.push({n,x,y});
+    n.children.forEach(walk);
+  })(root);
+  // desenha nós depois das arestas
+  (function draw(n){
+    const x=20+n._x*(NW+XGAP)+NW/2, y=20+n._depth*YGAP;
+    let fill="var(--node)",stroke="var(--node-line)",sw=1.6,tc="#cfeede";
+    if(highlight.visit.has(n._uid)){fill="#114a63";stroke="var(--visit)";sw=2.4;tc="#d6f0ff";}
+    if(highlight.path.has(n._uid)){stroke="var(--path)";sw=2.4;}
+    if(highlight.found===n._uid){fill="#0e5230";stroke="var(--found)";sw=3;tc="#d6ffe6";}
+    if(selected&&selected._uid===n._uid){stroke="var(--sel)";sw=3.2;}
+    const order=highlight.order&&highlight.order[n._uid];
+    nodes+=`<g class="node-card" data-uid="${n._uid}">
+      <rect x="${x-NW/2}" y="${y}" width="${NW}" height="${NH}" rx="9" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+      <text x="${x}" y="${y+15}" text-anchor="middle" font-size="11.5" fill="${tc}" font-weight="600" style="text-transform:capitalize">${n.name.length>10?n.name.slice(0,9)+'…':n.name}</text>
+      <text x="${x}" y="${y+27}" text-anchor="middle" font-size="9" fill="#7fae97" font-family="JetBrains Mono">#${n.id} · g${n.children.length}</text>
+      ${order?`<circle cx="${x+NW/2-4}" cy="${y-2}" r="9" fill="#39B3F2" stroke="#fff"/><text x="${x+NW/2-4}" y="${y+1.5}" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">${order}</text>`:''}
+    </g>`;
+    n.children.forEach(draw);
+  })(root);
+  $("tree").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="min-width:100%">${edges}${nodes}</svg>`;
+  $("tree").querySelectorAll(".node-card").forEach(g=>g.onclick=()=>selecionar(parseInt(g.dataset.uid,10)));
+}
+
+// ---------------- seleção ----------------
+function buscarUid(u,n=root){ if(n._uid===u)return n; for(const c of n.children){const r=buscarUid(u,c);if(r)return r;} return null; }
+function selecionar(u){
+  selected=buscarUid(u); render(); atualizarMetricas();
+  const d=profundidade(selected), alt=altura(selected);
+  $("selinfo").innerHTML=`Selecionado: <b>${selected.name}</b> (#${selected.id}) · grau <b>${selected.children.length}</b> · profundidade <b>${d}</b> · altura do sub-ramo <b>${alt}</b>`;
+  $("btnInserir").disabled=false; $("btnExcluir").disabled = !selected._parent; // raiz não exclui
+  $("note").textContent=`Nó “${selected.name}” selecionado.`;
+}
+
+// ---------------- caminhamentos ----------------
+function preorder(n,out){ out.push(n); n.children.forEach(c=>preorder(c,out)); }
+function postorder(n,out){ n.children.forEach(c=>postorder(c,out)); out.push(n); }
+function inorder(n,out){ // generalização n-ária: 1º filho, nó, demais filhos
+  if(!n.children.length){ out.push(n); return; }
+  inorder(n.children[0],out); out.push(n);
+  for(let i=1;i<n.children.length;i++) inorder(n.children[i],out);
+}
+function rodarTraversal(tipo){
+  pararAnim(); const out=[];
+  if(tipo==="pre")preorder(root,out); else if(tipo==="post")postorder(root,out); else inorder(root,out);
+  const nomes={pre:"Pré-ordem",in:"Em-ordem",post:"Pós-ordem"};
+  highlight={visit:new Set(),path:new Set(),found:null,order:{}};
+  $("order").innerHTML=""; let i=0;
+  $("note").textContent=nomes[tipo]+": visitando…";
+  timer=setInterval(()=>{
+    if(i>=out.length){ pararAnim(); $("note").textContent=nomes[tipo]+" concluída ("+out.length+" nós)."; return; }
+    const n=out[i]; highlight.visit.add(n._uid); highlight.order[n._uid]=i+1; render();
+    $("order").innerHTML+=`<span class="ch"><b>${i+1}.</b> ${n.name}</span>`;
+    i++;
+  }, 600);
+}
+function pararAnim(){ if(timer){clearInterval(timer);timer=null;} }
+
+// ---------------- busca BFS + caminho ----------------
+function bfs(nome){
+  const q=[root];
+  while(q.length){ const n=q.shift(); if(n.name.toLowerCase().includes(nome)) return n; n.children.forEach(c=>q.push(c)); }
+  return null;
+}
+function buscar(){
+  pararAnim();
+  const t=$("busca").value.trim().toLowerCase();
+  if(!t){toast("Digite um nome para buscar.",true);return;}
+  const alvo=bfs(t);
+  highlight={visit:new Set(),path:new Set(),found:null};
+  if(!alvo){ render(); $("note").textContent=`“${t}” não encontrado na árvore.`; $("pathBox").innerHTML=""; toast("Nó não encontrado",true); return; }
+  const caminho=[]; let n=alvo; while(n){ caminho.unshift(n); highlight.path.add(n._uid); n=n._parent; }
+  highlight.found=alvo._uid; selected=alvo; render(); atualizarMetricas();
+  $("note").textContent=`Encontrado “${alvo.name}” (BFS).`;
+  $("pathBox").innerHTML="caminho da raiz: "+caminho.map(x=>`<span class="seg">${x.name}</span>`).join(" › ");
+  $("btnInserir").disabled=false; $("btnExcluir").disabled=!alvo._parent;
+}
+
+// ---------------- inserção / exclusão local ----------------
+function inserir(){
+  if(!selected){toast("Selecione um nó primeiro.",true);return;}
+  const nome=$("novoNome").value.trim().toLowerCase();
+  if(!nome){toast("Digite o nome do novo nó.",true);return;}
+  const novo={name:nome,id:0,children:[],_uid:uid++,_parent:selected};
+  selected.children.push(novo);
+  $("novoNome").value="";
+  render(); atualizarMetricas();
+  toast(`“${nome}” inserido como filho de ${selected.name}`);
+  $("note").textContent=`Inserido “${nome}” sob “${selected.name}”.`;
+}
+function excluir(){
+  if(!selected||!selected._parent){toast("Não é possível excluir a raiz.",true);return;}
+  const pai=selected._parent, idx=pai.children.indexOf(selected);
+  // promove os filhos do nó removido para o pai (mantém integridade)
+  selected.children.forEach(c=>c._parent=pai);
+  pai.children.splice(idx,1,...selected.children);
+  const nome=selected.name;
+  selected=pai; render(); atualizarMetricas();
+  $("btnExcluir").disabled=!pai._parent;
+  toast(`“${nome}” removido (filhos promovidos ao pai)`);
+  $("note").textContent=`Removido “${nome}”; filhos promovidos a “${pai.name}”.`;
+}
+
+// ---------------- carregar da API ----------------
+async function carregarApi(){
+  const nome=$("selChain").value;
+  $("btnApi").disabled=true; $("btnApi").textContent="Baixando…";
+  try{
+    const r=await fetch(`/api/evolucao?pokemon=${nome}`); const j=await r.json();
+    if(!j.ok) throw new Error(j.erro||"falha");
+    carregarArvore(j.tree); toast("Cadeia carregada da PokéAPI ✔");
+  }catch(e){ toast("Sem internet/cache — usando exemplo local.",true); carregarArvore(SAMPLES[nome]||SAMPLES.eevee); }
+  finally{ $("btnApi").disabled=false; $("btnApi").textContent="⬇️ Carregar da API"; }
+}
+
+// ---------------- eventos ----------------
+document.querySelectorAll(".trav button").forEach(b=>b.onclick=()=>rodarTraversal(b.dataset.t));
+$("btnApi").onclick=carregarApi;
+$("btnReset").onclick=()=>carregarArvore(SAMPLES[$("selChain").value]||SAMPLES.eevee);
+$("selChain").onchange=()=>carregarArvore(SAMPLES[$("selChain").value]||SAMPLES.eevee);
+$("btnBuscar").onclick=buscar;
+$("busca").addEventListener("keydown",e=>{if(e.key==="Enter")buscar();});
+$("btnInserir").onclick=inserir;
+$("btnExcluir").onclick=excluir;
+$("novoNome").addEventListener("keydown",e=>{if(e.key==="Enter")inserir();});
+
+carregarArvore(SAMPLES.eevee);  // começa com a árvore ramificada do Eevee
+</script>
+</body>
+</html>
